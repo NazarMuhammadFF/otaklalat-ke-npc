@@ -126,8 +126,22 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
   - GUI runtime test: tangkapan layar `reports/screenshots/bento_dashboard.png` terverifikasi 100% utuh tanpa potongan di sisi kanan layar.
+### [2026-10-19] - Antigravity (Gemini) (#6: Desain Ulang Map 4 Hutan Rindang & Natural)
+- **Tindakan**:
+  1. Merombak total [`scripts/World/Maps/MapHutanNavigasi.cs`](scripts/World/Maps/MapHutanNavigasi.cs) menjadi ekosistem hutan yang rindang, detail, dan natural dengan tetap menjaga performa tinggi melalui *resource batching* (mesh & material dibagi bersama, `CastShadow = Off` pada elemen lantai dan dedaunan kecil):
+     - **5 Jalur Jalan Setapak Bercabang & Alun-Alun Tengah**: Jalur utama S-curve Utara–Selatan, jalur lintas Barat–Timur, jalur melingkar Timur Laut (hutan Birch), jalur melingkar Barat Daya (batang tumbang), serta cabang Tenggara menuju sumber makanan tepi hutan. Dibangun dengan lapisan tanah padat & tepi tanah organik ditambah batu pijakan (*stepping stones*) dan bercak lumut bawah kanopi.
+     - **38 Pohon Multi-Spesies Rindang**: Kombinasi 16 `MapleTree_1..5.gltf` (kanopi merah-oranye), 16 `BirchTree_1..5.gltf` (batang putih, kanopi kuning keemasan), dan 6 `DeadTree_1..8.gltf`, semuanya dilengkapi kolider silinder `StaticBody3D` dan terdaftar di `Obstacles` agar raycast mekanosensorik NPC (`rayL`/`rayC`/`rayR`) dapat menghindari batang pohon secara alami.
+     - **8 Kayu Tumbang Berlumut (`BuildFallenLogs`)**: Batang kayu silinder bertekstur kulit pohon (`MapleTree_Bark.png` + normal map) lengkap dengan penampang cincin kayu, dahan rebah `DeadTree`, semak/rumput pendamping, dan kolider `BoxShape3D` terorientasi.
+     - **10 Singkapan Batu Besar & ~110 Kerikil (`BuildBouldersAndPebbles`)**: Bongkahan batu berfaset bertekstur `Rocks.png` (abu-abu, berlumut, dan hangat) dengan kolider silinder, ditambah 24 kluster sebaran batu kerikil di sepanjang tepi jalur jalan dan sekitar batu besar.
+     - **Vegetasi Bawah Rindang (`BuildUndergrowthAndFoliage`)**: 18 semak belukar (`Bush*.gltf`), 20 rumpun bunga liar (`Flower_*_Clump.gltf`), dan ~80 rumpun rumput (`Grass_Large.gltf`, `Grass_Large_Extruded.gltf`, `Grass_Small.gltf`) yang tersebar alami di lantai hutan tanpa menghalangi pergerakan NPC.
+     - **10 Titik Makanan Alami**: Tersebar di persimpangan jalan setapak dan balik pepohonan untuk memicu eksplorasi kompas Central Complex + penciuman antena.
+  2. Menambahkan dukungan argumen CLI `--map=0..3` pada [`scripts/UI/Dashboard.cs`](scripts/UI/Dashboard.cs) untuk memudahkan pembukaan langsung map tertentu saat pengujian/tangkapan layar otomatis.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+  - Tangkapan layar verifikasi disimpan di `reports/screenshots/map_hutan_navigasi.png`.
 - **Tugas Berikutnya**:
-  - Pengujian langsung UI oleh pengguna via `JALANKAN_GAME.bat`.
+  - Pengujian langsung UI & Map Hutan oleh pengguna via `JALANKAN_GAME.bat`.
   - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan grafik data bab 4 (`tools/analysis/analyze_bench.py`).
 
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka

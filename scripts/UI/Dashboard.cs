@@ -86,16 +86,29 @@ public partial class Dashboard : Control
         // Kolom Kanan: Inspeksi NPC Terpilih & 6 Knob Sifat Biologis
         BuildRightColumn(mainGrid);
 
-        // 4. Muat Map Default (Map 1: Makan vs Racun)
-        SwitchMap(0);
+        // 4. Muat Map Default (atau dari argumen --map=0..3)
+        int startMap = 0;
+        bool autoShot = false;
+        string shotPath = "reports/screenshots/bento_dashboard.png";
+        foreach (var raw in OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()))
+        {
+            var a = raw.TrimStart('-');
+            if (a.StartsWith("map=") && int.TryParse(a.Substring(4), out int mIdx))
+                startMap = Mathf.Clamp(mIdx, 0, MapRegistry.Maps.Length - 1);
+            else if (a.StartsWith("screenshot-file="))
+                shotPath = a.Substring("screenshot-file=".Length);
+            else if (a == "auto-screenshot")
+                autoShot = true;
+        }
+        SwitchMap(startMap);
 
-        if (OS.GetCmdlineUserArgs().Contains("auto-screenshot") || OS.GetCmdlineArgs().Contains("--auto-screenshot"))
+        if (autoShot)
         {
             GetTree().CreateTimer(1.5).Timeout += () =>
             {
                 var img = GetViewport().GetTexture().GetImage();
                 DirAccess.MakeDirAbsolute("reports/screenshots");
-                img.SavePng("reports/screenshots/bento_dashboard.png");
+                img.SavePng(shotPath);
                 GetTree().Quit();
             };
         }
