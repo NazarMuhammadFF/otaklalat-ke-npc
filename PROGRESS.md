@@ -112,9 +112,22 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
   - Verifikasi headless scene `Map_MakanRacun.tscn` -> exited code 0, inisialisasi UI bersih tanpa runtime exception.
   - Verifikasi headless benchmark `Arena.tscn` -> exited code 0, 10 NPC simulasi selesai tanpa regresi.
+### [2026-10-19] - Antigravity (Gemini) (#5: True Bento Grid Dashboard)
+- **Tindakan**:
+  1. Mengubah paradigma tampilan dari overlay HUD mengambang menjadi **Dashboard Bento Grid Sejati**:
+     - Seluruh jendela aplikasi dibagi secara proporsional ke dalam grid sections (cards) dengan background gelap elegan (`#0a0f18`).
+     - Viewport Simulasi 3D tidak lagi menutupi layar penuh, melainkan terisolasi rapi di dalam frame section khusus (`SubViewportContainer` & `SubViewport` mandiri dengan `OwnWorld3D = true`), dengan rasio dinamis mengikuti ukuran jendela.
+     - Spike Raster neuron 2.635 LIF ditempatkan langsung di bawah frame 3D untuk korelasi visual instan antara gerakan hewan dan lonjakan syaraf.
+  2. Membuat [`scripts/UI/Dashboard.cs`](scripts/UI/Dashboard.cs) dan [`scenes/Dashboard.tscn`](scenes/Dashboard.tscn) sebagai scene utama baru (`run/main_scene="res://scenes/Dashboard.tscn"` di `project.godot`).
+  3. Memperbarui [`scripts/World/MapBase.cs`](scripts/World/MapBase.cs) dengan properti `SuppressOverlay` agar map dapat dimuat secara dinamis ke dalam SubViewport frame Dashboard tanpa menduplikasi overlay.
+  4. Mendukung ganti map 1-klik di header bar tanpa me-reload aplikasi, interaksi raycast seleksi NPC dan klik lantai spawn di dalam frame 3D, serta shortcut `F12` untuk mengambil tangkapan layar langsung ke `reports/screenshots/bento_dashboard.png`.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+  - GUI runtime test: tangkapan layar `reports/screenshots/bento_dashboard.png` terverifikasi merender frame 3D dan kartu-kartu Bento secara presisi.
 - **Tugas Berikutnya**:
   - Pengujian langsung UI oleh pengguna via `JALANKAN_GAME.bat`.
-  - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan visualisasi grafik data (`tools/analysis/analyze_bench.py`) untuk Bab 4 Tugas Akhir.
+  - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan grafik data bab 4 (`tools/analysis/analyze_bench.py`).
 
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
@@ -123,10 +136,11 @@ Keputusan:
 - 4 map uji terpisah 40×40 m (`scenes/maps/`), NPC di-spawn manual lewat overlay.
 - Window game di-set auto-maximized (`mode=2`, `resizable=true`) + dukungan `F11` fullscreen toggle.
 - File batch launcher disediakan sebagai `JALANKAN_GAME.bat`.
-- Antarmuka pengujian menggunakan arsitektur Bento Grid 7-kartu modular dengan Zen Mode (`H`).
+- Antarmuka pengujian resmi adalah **True Bento Grid Dashboard** (`res://scenes/Dashboard.tscn`) dengan viewport 3D terisolasi di dalam section frame mandiri.
 
 Belum diputuskan (jawab lalu catat di sini):
 - Visualisasi aroma: cincin transparan di lantai atau partikel kabut?
 - Skala benchmark: ringan (N=10-24) atau matriks penuh (N=10/50/100/200)?
+
 
 

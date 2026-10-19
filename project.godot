@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="otakLalat-npc"
-run/main_scene="res://scenes/maps/Map_MakanRacun.tscn"
+run/main_scene="res://scenes/Dashboard.tscn"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
 

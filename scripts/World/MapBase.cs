@@ -32,6 +32,7 @@ public abstract partial class MapBase : Node3D
     public Player PlayerNode { get; private set; }
     public RandomNumberGenerator Rng { get; } = new();
     public readonly List<Label3D> ZoneLabels = new();
+    public bool SuppressOverlay { get; set; }
     protected readonly List<Vector3> Obstacles = new();
     ulong nextSeed = 1;
 
@@ -62,7 +63,7 @@ public abstract partial class MapBase : Node3D
         PlayerNode.DropFood = p => SpawnEdible(new Vector3(p.X, 0, p.Z), false);
         AddChild(PlayerNode);
         SpawnInitialNpcs();
-        AddChild(new UI.DebugOverlay(this));
+        if (!SuppressOverlay) AddChild(new UI.DebugOverlay(this));
     }
 
     static Dictionary<string, string> ParseArgs()
