@@ -53,25 +53,28 @@ public partial class Dashboard : Control
 
         var margin = new MarginContainer();
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        margin.AddThemeConstantOverride("margin_left", 8);
-        margin.AddThemeConstantOverride("margin_top", 6);
-        margin.AddThemeConstantOverride("margin_right", 8);
-        margin.AddThemeConstantOverride("margin_bottom", 8);
+        margin.AddThemeConstantOverride("margin_left", 6);
+        margin.AddThemeConstantOverride("margin_top", 4);
+        margin.AddThemeConstantOverride("margin_right", 6);
+        margin.AddThemeConstantOverride("margin_bottom", 6);
         AddChild(margin);
 
         var rootBox = new VBoxContainer();
         rootBox.AddThemeConstantOverride("separation", 6);
+        rootBox.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        rootBox.SizeFlagsVertical = SizeFlags.ExpandFill;
         margin.AddChild(rootBox);
 
         // 2. Baris Header / Top Bar (Map Switcher & Engine Stats)
         BuildTopBar(rootBox);
 
-        // 3. Grid Utama (3 Kolom Bento: Kiri [300px], Tengah [Flex/Expand], Kanan [340px])
+        // 3. Grid Utama (3 Kolom Bento: Kiri [245px], Tengah [Flex/Expand], Kanan [265px])
         var mainGrid = new HBoxContainer
         {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        mainGrid.AddThemeConstantOverride("separation", 8);
+        mainGrid.AddThemeConstantOverride("separation", 6);
         rootBox.AddChild(mainGrid);
 
         // Kolom Kiri: Spawner, Skenario Uji, & Skor Komparatif
@@ -115,12 +118,12 @@ public partial class Dashboard : Control
 
         // Judul Aplikasi
         var titleBox = new VBoxContainer();
-        var titleLbl = new Label { Text = "🧠 DROSOPHILA CONNECTOME NPC DASHBOARD" };
+        var titleLbl = new Label { Text = "🧠 OTAK LALAT NPC" };
         titleLbl.AddThemeColorOverride("font_color", new Color(0.38f, 0.82f, 0.98f));
-        titleLbl.AddThemeFontSizeOverride("font_size", 14);
-        var subTitle = new Label { Text = "Biologically Emergent NPCs (Shiu et al. 2024) vs FSM Baseline" };
+        titleLbl.AddThemeFontSizeOverride("font_size", 13);
+        var subTitle = new Label { Text = "Connectome LIF vs FSM" };
         subTitle.AddThemeColorOverride("font_color", new Color(0.55f, 0.65f, 0.75f));
-        subTitle.AddThemeFontSizeOverride("font_size", 10);
+        subTitle.AddThemeFontSizeOverride("font_size", 9);
         titleBox.AddChild(titleLbl);
         titleBox.AddChild(subTitle);
         topRow.AddChild(titleBox);
@@ -134,10 +137,17 @@ public partial class Dashboard : Control
         for (int i = 0; i < MapRegistry.Maps.Length; i++)
         {
             int idx = i;
-            var (title, _) = MapRegistry.Maps[i];
+            string shortTitle = i switch
+            {
+                0 => "Makan",
+                1 => "Bahaya",
+                2 => "Predator",
+                3 => "Hutan",
+                _ => MapRegistry.Maps[i].Title
+            };
             var btn = new Button
             {
-                Text = $"{i + 1}. {title}",
+                Text = $"{i + 1}: {shortTitle}",
                 FocusMode = FocusModeEnum.None,
             };
             btn.Pressed += () => SwitchMap(idx);
@@ -177,10 +187,10 @@ public partial class Dashboard : Control
     {
         var col = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(290, 0),
+            CustomMinimumSize = new Vector2(245, 0),
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        col.AddThemeConstantOverride("separation", 8);
+        col.AddThemeConstantOverride("separation", 6);
 
         // Card 1: 🐾 Spawner Populasi
         var cardSpawn = CreateBentoCard("🐾 SPAWNER POPULASI", new Color(0.20f, 0.83f, 0.60f), out var spawnBox);
@@ -201,7 +211,7 @@ public partial class Dashboard : Control
         clickSpawnCheck = new CheckButton { Text = "Klik lantai spawn", FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         clickSpawnCheck.Toggled += on => clickSpawn = on;
         row2.AddChild(clickSpawnCheck);
-        var clearBtn = new Button { Text = "🗑️ Hapus Semua", FocusMode = FocusModeEnum.None };
+        var clearBtn = new Button { Text = "🗑️ Hapus", FocusMode = FocusModeEnum.None };
         clearBtn.Pressed += () => { Select(null); currentMap?.ClearNpcs(); };
         row2.AddChild(clearBtn);
         spawnBox.AddChild(row2);
@@ -215,6 +225,7 @@ public partial class Dashboard : Control
         var cardStats = CreateBentoCard("📊 SKOR KOMPARATIF REAL-TIME", new Color(0.51f, 0.55f, 0.97f), out var statsBox);
         cardStats.SizeFlagsVertical = SizeFlags.ExpandFill;
         statsLabel = new Label();
+        statsLabel.AddThemeFontSizeOverride("font_size", 11);
         statsLabel.AddThemeColorOverride("font_color", new Color(0.92f, 0.95f, 1f));
         statsBox.AddChild(statsLabel);
         col.AddChild(cardStats);
@@ -224,10 +235,10 @@ public partial class Dashboard : Control
         helpPill.AddThemeStyleboxOverride("panel", CreateCardStyle(new Color(0.2f, 0.3f, 0.4f, 0.4f), new Color(0.04f, 0.06f, 0.09f, 0.8f), 6));
         var helpLbl = new Label
         {
-            Text = "💡 WASD: Gerak | Scroll: Zoom | F: Makanan\n[Ctrl+1..4] Ganti Map | [Tab] Label Nama",
+            Text = "💡 WASD: Gerak | Scroll: Zoom | F: Makanan\n[Ctrl+1..4] Ganti Map | [Tab] Label",
             HorizontalAlignment = HorizontalAlignment.Center,
         };
-        helpLbl.AddThemeFontSizeOverride("font_size", 10);
+        helpLbl.AddThemeFontSizeOverride("font_size", 9);
         helpLbl.AddThemeColorOverride("font_color", new Color(0.6f, 0.7f, 0.8f));
         helpPill.AddChild(helpLbl);
         col.AddChild(helpPill);
@@ -244,21 +255,21 @@ public partial class Dashboard : Control
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            SizeFlagsStretchRatio = 2.4f,
         };
-        col.AddThemeConstantOverride("separation", 8);
+        col.AddThemeConstantOverride("separation", 6);
 
         // Header Viewport 3D
         var camBar = new HBoxContainer();
         mapTitleLabel = new Label { Text = "Map: Memuat...", SizeFlagsHorizontal = SizeFlags.ExpandFill };
         mapTitleLabel.AddThemeColorOverride("font_color", new Color(0.4f, 0.8f, 1f));
+        mapTitleLabel.AddThemeFontSizeOverride("font_size", 11);
         camBar.AddChild(mapTitleLabel);
 
         var btnFps = new Button { Text = "F1: FPS", FocusMode = FocusModeEnum.None };
         btnFps.Pressed += () => currentMap?.PlayerNode?.SetCameraMode(Player.CamMode.FirstPerson);
-        var btnTop = new Button { Text = "F2: Kamera Atas", FocusMode = FocusModeEnum.None };
+        var btnTop = new Button { Text = "F2: Atas", FocusMode = FocusModeEnum.None };
         btnTop.Pressed += () => currentMap?.PlayerNode?.SetCameraMode(Player.CamMode.TopDown);
-        var btnFol = new Button { Text = "F3: Ikuti NPC", FocusMode = FocusModeEnum.None };
+        var btnFol = new Button { Text = "F3: Ikuti", FocusMode = FocusModeEnum.None };
         btnFol.Pressed += () =>
         {
             if (selected == null) Select(NpcBase.All.OfType<BrainNpc>().FirstOrDefault() ?? NpcBase.All.FirstOrDefault());
@@ -271,15 +282,15 @@ public partial class Dashboard : Control
         // Card 4: 🎮 Viewport Simulasi 3D (SubViewportContainer Frame)
         var cardVp = CreateBentoCard("🎮 SIMULASI DUNIA 3D", new Color(0.22f, 0.74f, 0.97f), out var vpBox, camBar);
         cardVp.SizeFlagsVertical = SizeFlags.ExpandFill;
-        cardVp.SizeFlagsStretchRatio = 3.0f;
-        cardVp.CustomMinimumSize = new Vector2(0, 380);
+        cardVp.SizeFlagsStretchRatio = 2.5f;
+        cardVp.CustomMinimumSize = new Vector2(0, 340);
 
         viewportContainer = new SubViewportContainer
         {
             Stretch = true,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 360),
+            CustomMinimumSize = new Vector2(0, 310),
         };
         subViewport = new SubViewport
         {
@@ -294,12 +305,12 @@ public partial class Dashboard : Control
         col.AddChild(cardVp);
 
         // Card 5: ⚡ Spike Raster Neuron (2.635 LIF)
-        var legendLbl = new Label { Text = "Cyan: Sensorik | Kuning: KC/MBON/CX | Merah: Motorik" };
-        legendLbl.AddThemeFontSizeOverride("font_size", 10);
+        var legendLbl = new Label { Text = "Cyan: Sensorik | Kuning: KC/CX | Merah: Motorik" };
+        legendLbl.AddThemeFontSizeOverride("font_size", 9);
         legendLbl.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.9f));
-        var cardRaster = CreateBentoCard("⚡ SPIKE RASTER NEURON (2.635 LIF CONNECTOME)", new Color(0.96f, 0.25f, 0.37f), out var rasterBox, legendLbl);
-        cardRaster.CustomMinimumSize = new Vector2(0, 150);
-        raster = new SpikeRaster { CustomMinimumSize = new Vector2(0, 120), SizeFlagsVertical = SizeFlags.ExpandFill };
+        var cardRaster = CreateBentoCard("⚡ SPIKE RASTER (2.635 LIF)", new Color(0.96f, 0.25f, 0.37f), out var rasterBox, legendLbl);
+        cardRaster.CustomMinimumSize = new Vector2(0, 140);
+        raster = new SpikeRaster { CustomMinimumSize = new Vector2(0, 110), SizeFlagsVertical = SizeFlags.ExpandFill };
         rasterBox.AddChild(raster);
         col.AddChild(cardRaster);
 
@@ -313,10 +324,10 @@ public partial class Dashboard : Control
     {
         var col = new VBoxContainer
         {
-            CustomMinimumSize = new Vector2(330, 0),
+            CustomMinimumSize = new Vector2(265, 0),
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
-        col.AddThemeConstantOverride("separation", 8);
+        col.AddThemeConstantOverride("separation", 6);
 
         // Card 6: 🔬 Inspeksi Entitas Terpilih
         var deselectBtn = new Button { Text = "❌ Batal", FocusMode = FocusModeEnum.None };
@@ -327,12 +338,13 @@ public partial class Dashboard : Control
             Text = "Klik hewan di dalam frame simulasi 3D untuk menginspeksi aktivitas sirkuit saraf dan motorik.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
+        inspectLabel.AddThemeFontSizeOverride("font_size", 11);
         inspectLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.92f, 0.98f));
         inspectBox.AddChild(inspectLabel);
         col.AddChild(cardInspect);
 
         // Card 7: 🧬 6 Knob Sifat Biologis (Live Modulasi)
-        var cardTraits = CreateBentoCard("🧬 6 KNOB SIFAT BIOLOGIS (LIVE TUNING)", new Color(0.96f, 0.62f, 0.04f), out var traitBox);
+        var cardTraits = CreateBentoCard("🧬 6 KNOB SIFAT (LIVE)", new Color(0.96f, 0.62f, 0.04f), out var traitBox);
         cardTraits.SizeFlagsVertical = SizeFlags.ExpandFill;
 
         noticeTraitsLabel = new Label
@@ -340,6 +352,7 @@ public partial class Dashboard : Control
             Text = "Pilih NPC Otak untuk modulasi 6 sifat biologi secara langsung.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
+        noticeTraitsLabel.AddThemeFontSizeOverride("font_size", 10);
         noticeTraitsLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.8f));
         traitBox.AddChild(noticeTraitsLabel);
 
@@ -348,10 +361,10 @@ public partial class Dashboard : Control
             int k = i;
             var row = new HBoxContainer();
             var nameLbl = new Label { Text = TraitNames[i], SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            nameLbl.AddThemeFontSizeOverride("font_size", 12);
+            nameLbl.AddThemeFontSizeOverride("font_size", 11);
             var valLbl = new Label { Text = "1.00" };
             valLbl.AddThemeColorOverride("font_color", new Color(0.96f, 0.85f, 0.4f));
-            valLbl.AddThemeFontSizeOverride("font_size", 12);
+            valLbl.AddThemeFontSizeOverride("font_size", 11);
             row.AddChild(nameLbl);
             row.AddChild(valLbl);
             sliderValLabels.Add(valLbl);
@@ -362,7 +375,7 @@ public partial class Dashboard : Control
                 MinValue = 0,
                 MaxValue = 2,
                 Step = 0.05,
-                CustomMinimumSize = new Vector2(0, 16),
+                CustomMinimumSize = new Vector2(0, 14),
                 Editable = false,
             };
             s.ValueChanged += v =>

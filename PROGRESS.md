@@ -121,10 +121,11 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   2. Membuat [`scripts/UI/Dashboard.cs`](scripts/UI/Dashboard.cs) dan [`scenes/Dashboard.tscn`](scenes/Dashboard.tscn) sebagai scene utama baru (`run/main_scene="res://scenes/Dashboard.tscn"` di `project.godot`).
   3. Memperbarui [`scripts/World/MapBase.cs`](scripts/World/MapBase.cs) dengan properti `SuppressOverlay` agar map dapat dimuat secara dinamis ke dalam SubViewport frame Dashboard tanpa menduplikasi overlay.
   4. Mendukung ganti map 1-klik di header bar tanpa me-reload aplikasi, interaksi raycast seleksi NPC dan klik lantai spawn di dalam frame 3D, serta shortcut `F12` untuk mengambil tangkapan layar langsung ke `reports/screenshots/bento_dashboard.png`.
+  5. Menyesuaikan lebar kolom Bento Grid (Kiri: 245px, Tengah: Flex Expand, Kanan: 265px) dan teks tombol map/judul top bar agar seluruh elemen pas 100% pada resolusi layar tanpa terpotong di sisi kanan.
 - **Verifikasi**:
   - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
-  - GUI runtime test: tangkapan layar `reports/screenshots/bento_dashboard.png` terverifikasi merender frame 3D dan kartu-kartu Bento secara presisi.
+  - GUI runtime test: tangkapan layar `reports/screenshots/bento_dashboard.png` terverifikasi 100% utuh tanpa potongan di sisi kanan layar.
 - **Tugas Berikutnya**:
   - Pengujian langsung UI oleh pengguna via `JALANKAN_GAME.bat`.
   - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan grafik data bab 4 (`tools/analysis/analyze_bench.py`).
