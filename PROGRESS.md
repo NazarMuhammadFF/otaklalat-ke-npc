@@ -95,9 +95,26 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
 - **Verifikasi**:
   - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+### [2026-10-19] - Antigravity (Gemini) (#4: Bento Grid UI System)
+- **Tindakan**:
+  1. Merefaktor arsitektur antarmuka pada [`scripts/UI/DebugOverlay.cs`](scripts/UI/DebugOverlay.cs) menjadi **Bento Grid Modular** dengan 2 kolom mengambang terpisah (Kiri dan Kanan), membebaskan area tengah 3D untuk pengamatan visual.
+  2. Membagi fungsi ke dalam 7 Bento Tiles terisolasi dengan border aksen warna khusus:
+     - 🟦 *Card 1*: 🗺️ Map & Kamera (`FPS`, `AI Tick ms`, `Kamera F1/F2/F3`, `Fullscreen F11`, Pindah 4 Map).
+     - 🟩 *Card 2*: 🐾 Spawner Populasi (Dropdown Tipe & AI, `+ Spawn`, centang `Klik lantai`, `🗑️ Hapus Semua`).
+     - 🟧 *Card 3*: 🎯 Skenario Uji Khusus (Tombol pemicu kontekstual map: Looming, Makan vs Racun, Belajar Bahaya).
+     - 🟪 *Card 4*: 📊 Skor Komparatif Real-Time (Tabel head-to-head Otak vs FSM untuk metrik makan, racun, kabur, bahaya, jarak).
+     - 🩵 *Card 5*: 🔬 Inspeksi Entitas Terpilih (Status emotikon, output motorik terurai, laju tembak neuron motorik GF/DNa/MN9/MBON).
+     - 🟨 *Card 6*: 🧬 6 Knob Sifat Biologis (6 slider interaktif dilengkapi pembacaan angka desimal real-time).
+     - 🔴 *Card 7*: ⚡ Raster Spike Neuron (Visualisasi 2.635 neuron LIF: sensorik, memori/navigasi, motorik).
+  3. Menambahkan fitur *collapsible* (tombol `−`/`+` per kartu) serta mode Zen / sembunyikan HUD instan via tombol shortcut **`H`**.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+  - Verifikasi headless scene `Map_MakanRacun.tscn` -> exited code 0, inisialisasi UI bersih tanpa runtime exception.
+  - Verifikasi headless benchmark `Arena.tscn` -> exited code 0, 10 NPC simulasi selesai tanpa regresi.
 - **Tugas Berikutnya**:
-  - Pengujian interaktif UI spawn & navigasi antar-map oleh pengguna.
-  - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan plot statistik (`tools/analysis/analyze_bench.py`) untuk data Tugas Akhir.
+  - Pengujian langsung UI oleh pengguna via `JALANKAN_GAME.bat`.
+  - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan visualisasi grafik data (`tools/analysis/analyze_bench.py`) untuk Bab 4 Tugas Akhir.
 
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
@@ -106,8 +123,10 @@ Keputusan:
 - 4 map uji terpisah 40×40 m (`scenes/maps/`), NPC di-spawn manual lewat overlay.
 - Window game di-set auto-maximized (`mode=2`, `resizable=true`) + dukungan `F11` fullscreen toggle.
 - File batch launcher disediakan sebagai `JALANKAN_GAME.bat`.
+- Antarmuka pengujian menggunakan arsitektur Bento Grid 7-kartu modular dengan Zen Mode (`H`).
 
 Belum diputuskan (jawab lalu catat di sini):
 - Visualisasi aroma: cincin transparan di lantai atau partikel kabut?
 - Skala benchmark: ringan (N=10-24) atau matriks penuh (N=10/50/100/200)?
+
 

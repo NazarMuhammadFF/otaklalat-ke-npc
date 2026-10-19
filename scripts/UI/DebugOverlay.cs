@@ -8,15 +8,19 @@ using OtakLalat.World;
 namespace OtakLalat.UI;
 
 /// <summary>
-/// Overlay evaluasi interaktif: kontrol kamera (F1/F2/F3), skenario uji satu-klik, statistik komparatif Otak vs FSM,
-/// serta inspeksi NPC terpilih (slider 6 knob sifat langsung & raster spike neuron).
+/// Overlay evaluasi interaktif berbasis Bento Grid:
+/// - Kolom Kiri: Map & Navigasi Kamera, Spawner Populasi, Skenario Uji, Papan Skor Komparatif.
+/// - Kolom Kanan: Inspeksi Entitas Terpilih, 6 Knob Sifat Biologis (Live Sliders), Spike Raster (2.635 LIF).
 /// </summary>
 public partial class DebugOverlay : CanvasLayer
 {
     MapBase arena;
+    Control hudRoot;
+    VBoxContainer leftBento, rightBento;
     Label info, statsLabel, detail;
-    VBoxContainer panel;
+    PanelContainer cardScenarios, cardInspect, cardTraits, cardRaster;
     readonly List<HSlider> sliders = new();
+    readonly List<Label> sliderValLabels = new();
     SpikeRaster raster;
     NpcBase selected;
     bool labels = true;
@@ -29,86 +33,241 @@ public partial class DebugOverlay : CanvasLayer
 
     public override void _Ready()
     {
-        // Panel Kiri-Atas: Kontrol Kamera, Skenario Uji Satu-Klik & Statistik Komparatif Real-Time
-        var leftBg = new PanelContainer { Position = new Vector2(10, 10), CustomMinimumSize = new Vector2(460, 0) };
-        var leftBox = new VBoxContainer();
-        leftBg.AddChild(leftBox);
-        AddChild(leftBg);
+        hudRoot = new Control { Name = "HudRoot", MouseFilter = Control.MouseFilterEnum.Ignore };
+        hudRoot.SetAnchorsPreset(Control.LayoutPreset.FullRect);
+        AddChild(hudRoot);
 
+        // =========================================================================
+        // KOLOM BENTO KIRI: Manajemen Skenario & Pemantauan Global (Lebar 380px)
+        // =========================================================================
+        leftBento = new VBoxContainer
+        {
+            Name = "LeftBento",
+            OffsetLeft = 14f,
+            OffsetTop = 14f,
+            OffsetRight = 394f,
+            CustomMinimumSize = new Vector2(380, 0),
+        };
+        leftBento.AddThemeConstantOverride("separation", 10);
+        hudRoot.AddChild(leftBento);
+
+        // --- Card 1: 🗺️ Map & Kamera ---
+        var cardMap = CreateBentoCard("🗺️ MAP & KAMERA", new Color(0.22f, 0.74f, 0.97f), out var mapBox);
         info = new Label();
-        info.AddThemeColorOverride("font_shadow_color", Colors.Black);
-        leftBox.AddChild(info);
+        info.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f));
+        mapBox.AddChild(info);
 
-        // Baris Tombol Kamera (F1 / F2 / F3) & Layar Penuh
         var camRow = new HBoxContainer();
-        AddBtn(camRow, "F1: Pemain (FPS)", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.FirstPerson));
-        AddBtn(camRow, "F2: Kamera Atas", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.TopDown));
-        AddBtn(camRow, "F3: Ikuti NPC", () =>
+        AddBtn(camRow, "F1: FPS", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.FirstPerson));
+        AddBtn(camRow, "F2: Atas", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.TopDown));
+        AddBtn(camRow, "F3: Ikuti", () =>
         {
             if (selected == null) Select(NpcBase.All.OfType<BrainNpc>().FirstOrDefault() ?? NpcBase.All.FirstOrDefault());
             arena.PlayerNode?.SetCameraMode(Player.CamMode.FollowNpc, selected);
         });
-        AddBtn(camRow, "⛶ Layar Penuh (F11)", ToggleFullscreen);
-        leftBox.AddChild(camRow);
+        AddBtn(camRow, "⛶ F11", ToggleFullscreen);
+        mapBox.AddChild(camRow);
 
-        // Baris Navigasi Map (Ctrl+1..4)
         string current = arena.SceneFilePath;
         var mapRow = new HBoxContainer();
-        mapRow.AddChild(new Label { Text = "Map:" });
         for (int i = 0; i < MapRegistry.Maps.Length; i++)
         {
             var (title, path) = MapRegistry.Maps[i];
-            AddBtn(mapRow, $"{i + 1} {title}", () => GoToMap(path), disabled: path == current);
+            string shortTitle = i switch
+            {
+                0 => "Makan",
+                1 => "Bahaya",
+                2 => "Predator",
+                3 => "Hutan",
+                _ => title
+            };
+            AddBtn(mapRow, $"{i + 1}:{shortTitle}", () => GoToMap(path), disabled: path == current);
         }
-        leftBox.AddChild(mapRow);
-        leftBox.AddChild(new Label { Text = $"Map aktif: {arena.MapTitle}" });
+        mapBox.AddChild(mapRow);
+        leftBento.AddChild(cardMap);
 
-        // Baris Spawn Manual
+        // --- Card 2: 🐾 Spawner Populasi ---
+        var cardSpawn = CreateBentoCard("🐾 SPAWNER POPULASI", new Color(0.20f, 0.83f, 0.60f), out var spawnBox);
         var spawnRow = new HBoxContainer();
         typeOpt = new OptionButton { FocusMode = Control.FocusModeEnum.None };
         foreach (var t in MapBase.TypeIds) typeOpt.AddItem(t);
         methodOpt = new OptionButton { FocusMode = Control.FocusModeEnum.None };
         methodOpt.AddItem("Otak"); methodOpt.AddItem("FSM");
-        spawnRow.AddChild(new Label { Text = "Spawn:" });
+        spawnRow.AddChild(new Label { Text = "Tipe:" });
         spawnRow.AddChild(typeOpt);
         spawnRow.AddChild(methodOpt);
-        AddBtn(spawnRow, "Spawn", SpawnAtScreenCenter);
-        AddBtn(spawnRow, "Hapus semua", () => { Select(null); arena.ClearNpcs(); });
-        leftBox.AddChild(spawnRow);
-        var clickChk = new CheckButton { Text = "Klik lantai untuk spawn", FocusMode = Control.FocusModeEnum.None };
+        AddBtn(spawnRow, "+ Spawn", SpawnAtScreenCenter);
+        spawnBox.AddChild(spawnRow);
+
+        var spawnActionRow = new HBoxContainer();
+        var clickChk = new CheckButton { Text = "Klik lantai spawn", FocusMode = Control.FocusModeEnum.None };
         clickChk.Toggled += on => clickSpawn = on;
-        leftBox.AddChild(clickChk);
+        spawnActionRow.AddChild(clickChk);
+        AddBtn(spawnActionRow, "🗑️ Hapus Semua", () => { Select(null); arena.ClearNpcs(); });
+        spawnBox.AddChild(spawnActionRow);
+        leftBento.AddChild(cardSpawn);
 
-        // Baris Tombol Skenario Uji (hanya yang relevan untuk map ini)
+        // --- Card 3: 🎯 Skenario Uji Khusus ---
+        cardScenarios = CreateBentoCard("🎯 SKENARIO UJI KHUSUS", new Color(0.98f, 0.57f, 0.24f), out var scenBox);
         var scenRow = new HBoxContainer();
-        if (arena.Stats.HasFlag(MapStats.Escape)) AddBtn(scenRow, "🦅 Uji Looming", TriggerLoomingTest);
-        if (arena.Stats.HasFlag(MapStats.Food) || arena.Stats.HasFlag(MapStats.Poison)) AddBtn(scenRow, "🍎 Uji Makan vs Racun", TriggerFeedingTest);
-        if (arena.Stats.HasFlag(MapStats.Danger)) AddBtn(scenRow, "⚡ Uji Belajar Bahaya", TriggerDangerLearningTest);
-        if (scenRow.GetChildCount() > 0) leftBox.AddChild(scenRow);
+        if (arena.Stats.HasFlag(MapStats.Escape)) AddBtn(scenRow, "🦅 Looming", TriggerLoomingTest);
+        if (arena.Stats.HasFlag(MapStats.Food) || arena.Stats.HasFlag(MapStats.Poison)) AddBtn(scenRow, "🍎 Makan vs Racun", TriggerFeedingTest);
+        if (arena.Stats.HasFlag(MapStats.Danger)) AddBtn(scenRow, "⚡ Belajar Bahaya", TriggerDangerLearningTest);
+        if (scenRow.GetChildCount() > 0)
+        {
+            scenBox.AddChild(scenRow);
+            leftBento.AddChild(cardScenarios);
+        }
 
+        // --- Card 4: 📊 Skor Komparatif (Otak vs FSM) ---
+        var cardStats = CreateBentoCard("📊 SKOR KOMPARATIF REAL-TIME", new Color(0.51f, 0.55f, 0.97f), out var statsBox);
         statsLabel = new Label();
-        statsLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.95f, 1f));
-        leftBox.AddChild(statsLabel);
+        statsLabel.AddThemeColorOverride("font_color", new Color(0.92f, 0.95f, 1f));
+        statsBox.AddChild(statsLabel);
+        leftBento.AddChild(cardStats);
 
-        // Panel Kanan-Atas: Inspeksi NPC Terpilih (Slider 6 Knob Sifat & Raster Spike)
-        panel = new VBoxContainer { Visible = false, CustomMinimumSize = new Vector2(360, 0) };
-        var bg = new PanelContainer { AnchorLeft = 1, AnchorRight = 1, OffsetLeft = -380, OffsetTop = 10, OffsetRight = -10 };
-        bg.AddChild(panel);
-        AddChild(bg);
+        // --- Baris Bantuan Bawah Singkat ---
+        var helpPill = new PanelContainer();
+        var helpStyle = new StyleBoxFlat
+        {
+            BgColor = new Color(0.04f, 0.06f, 0.09f, 0.80f),
+            CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6,
+            CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6,
+            ContentMarginLeft = 8, ContentMarginRight = 8,
+            ContentMarginTop = 4, ContentMarginBottom = 4,
+        };
+        helpPill.AddThemeStyleboxOverride("panel", helpStyle);
+        var helpLabel = new Label
+        {
+            Text = "💡 [H] Sembunyikan HUD | [Tab] Nama | [Esc] Batal Pilih",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        helpLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.9f, 0.85f));
+        helpPill.AddChild(helpLabel);
+        leftBento.AddChild(helpPill);
+
+        // =========================================================================
+        // KOLOM BENTO KANAN: Inspeksi Entitas & Sirkuit Saraf Terpilih (Lebar 380px)
+        // =========================================================================
+        rightBento = new VBoxContainer
+        {
+            Name = "RightBento",
+            AnchorLeft = 1f,
+            AnchorRight = 1f,
+            OffsetLeft = -394f,
+            OffsetTop = 14f,
+            OffsetRight = -14f,
+            CustomMinimumSize = new Vector2(380, 0),
+            Visible = false,
+        };
+        rightBento.AddThemeConstantOverride("separation", 10);
+        hudRoot.AddChild(rightBento);
+
+        // --- Card 5: 🔬 Status & Motorik Terurai ---
+        cardInspect = CreateBentoCard("🔬 INSPEKSI ENTITAS", new Color(0.18f, 0.83f, 0.75f), out var inspectBox);
         detail = new Label();
-        panel.AddChild(detail);
+        detail.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f));
+        inspectBox.AddChild(detail);
+        rightBento.AddChild(cardInspect);
+
+        // --- Card 6: 🧬 6 Knob Sifat Biologis ---
+        cardTraits = CreateBentoCard("🧬 6 KNOB SIFAT BIOLOGIS", new Color(0.96f, 0.62f, 0.04f), out var traitBox);
         for (int i = 0; i < TraitNames.Length; i++)
         {
             int k = i;
-            panel.AddChild(new Label { Text = TraitNames[i] });
-            var s = new HSlider { MinValue = 0, MaxValue = 2, Step = 0.05, CustomMinimumSize = new Vector2(340, 16) };
-            s.ValueChanged += v => SetTrait(k, (float)v);
+            var headerRow = new HBoxContainer();
+            var nameLbl = new Label { Text = TraitNames[i], SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
+            var valLbl = new Label { Text = "1.00" };
+            valLbl.AddThemeColorOverride("font_color", new Color(0.96f, 0.85f, 0.4f));
+            headerRow.AddChild(nameLbl);
+            headerRow.AddChild(valLbl);
+            sliderValLabels.Add(valLbl);
+            traitBox.AddChild(headerRow);
+
+            var s = new HSlider { MinValue = 0, MaxValue = 2, Step = 0.05, CustomMinimumSize = new Vector2(350, 16) };
+            s.ValueChanged += v =>
+            {
+                SetTrait(k, (float)v);
+                valLbl.Text = v.ToString("F2");
+            };
             sliders.Add(s);
-            panel.AddChild(s);
+            traitBox.AddChild(s);
         }
-        raster = new SpikeRaster { CustomMinimumSize = new Vector2(340, 200) };
-        panel.AddChild(new Label { Text = "Raster spike (atas: input, tengah: KC/MBON/CX, bawah: output)" });
-        panel.AddChild(raster);
+        rightBento.AddChild(cardTraits);
+
+        // --- Card 7: ⚡ Raster Spike Neuron ---
+        cardRaster = CreateBentoCard("⚡ SPIKE RASTER (2.635 LIF)", new Color(0.96f, 0.25f, 0.37f), out var rasterBox);
+        var legendLbl = new Label
+        {
+            Text = "Cyan: Sensorik | Kuning: KC/MBON | Merah: Motorik",
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        legendLbl.AddThemeColorOverride("font_color", new Color(0.8f, 0.85f, 0.9f));
+        rasterBox.AddChild(legendLbl);
+        raster = new SpikeRaster { CustomMinimumSize = new Vector2(350, 180) };
+        rasterBox.AddChild(raster);
+        rightBento.AddChild(cardRaster);
+    }
+
+    PanelContainer CreateBentoCard(string title, Color accentColor, out VBoxContainer contentBox)
+    {
+        var panel = new PanelContainer();
+        var style = new StyleBoxFlat
+        {
+            BgColor = new Color(0.06f, 0.08f, 0.12f, 0.88f),
+            CornerRadiusTopLeft = 10,
+            CornerRadiusTopRight = 10,
+            CornerRadiusBottomLeft = 10,
+            CornerRadiusBottomRight = 10,
+            BorderWidthLeft = 2,
+            BorderWidthTop = 2,
+            BorderWidthRight = 2,
+            BorderWidthBottom = 2,
+            BorderColor = accentColor,
+            ContentMarginLeft = 12,
+            ContentMarginTop = 8,
+            ContentMarginRight = 12,
+            ContentMarginBottom = 10,
+            ShadowColor = new Color(0, 0, 0, 0.4f),
+            ShadowSize = 5,
+        };
+        panel.AddThemeStyleboxOverride("panel", style);
+
+        var mainBox = new VBoxContainer();
+        mainBox.AddThemeConstantOverride("separation", 6);
+        panel.AddChild(mainBox);
+
+        // Header bar dengan Title & Tombol Minimalkan
+        var header = new HBoxContainer();
+        var titleLbl = new Label
+        {
+            Text = title,
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        titleLbl.AddThemeColorOverride("font_color", accentColor);
+        header.AddChild(titleLbl);
+
+        contentBox = new VBoxContainer();
+        contentBox.AddThemeConstantOverride("separation", 6);
+
+        var collapseBtn = new Button
+        {
+            Text = "−",
+            FocusMode = Control.FocusModeEnum.None,
+            CustomMinimumSize = new Vector2(24, 20),
+        };
+        var capturedContentBox = contentBox;
+        collapseBtn.Pressed += () =>
+        {
+            capturedContentBox.Visible = !capturedContentBox.Visible;
+            collapseBtn.Text = capturedContentBox.Visible ? "−" : "+";
+        };
+        header.AddChild(collapseBtn);
+
+        mainBox.AddChild(header);
+        mainBox.AddChild(contentBox);
+
+        return panel;
     }
 
     static void AddBtn(Container parent, string text, System.Action onClick, bool disabled = false)
@@ -177,7 +336,6 @@ public partial class DebugOverlay : CanvasLayer
         var t = EnsureTargetNpc("rusa");
         var dz = WorldRegistry.Dangers.FirstOrDefault();
         if (t == null || dz == null) return;
-        // Tempatkan NPC di tepi zona bahaya menghadap ke pusat zona agar penguji mengamati sengatan & penghindaran
         var startPos = dz.GlobalPosition + new Vector3(0, 0.1f, dz.Radius + 1.2f);
         t.GlobalPosition = startPos;
         t.LookAt(new Vector3(dz.GlobalPosition.X, startPos.Y, dz.GlobalPosition.Z), Vector3.Up);
@@ -204,16 +362,29 @@ public partial class DebugOverlay : CanvasLayer
         if (selected is BrainNpc old) old.Brain.CaptureCounts = null;
         selected = n;
         if (arena.PlayerNode != null && n != null) arena.PlayerNode.FollowTarget = n;
-        panel.Visible = n != null;
-        foreach (var s in sliders) s.Visible = n is BrainNpc;
-        raster.Visible = n is BrainNpc;
+
+        if (n == null)
+        {
+            rightBento.Visible = false;
+            return;
+        }
+
+        rightBento.Visible = true;
+        bool isBrain = n is BrainNpc;
+        cardTraits.Visible = isBrain;
+        cardRaster.Visible = isBrain;
+
         if (n is BrainNpc b)
         {
             b.Brain.CaptureCounts = new int[b.Brain.State.C.N];
             raster.Bind(b.Brain);
             var t = b.Traits;
             float[] vals = { t.Fearfulness, t.Appetite, t.Pickiness, t.Curiosity, t.LearningRate, t.NeuralNoise };
-            for (int i = 0; i < vals.Length; i++) sliders[i].SetValueNoSignal(vals[i]);
+            for (int i = 0; i < vals.Length; i++)
+            {
+                sliders[i].SetValueNoSignal(vals[i]);
+                sliderValLabels[i].Text = vals[i].ToString("F2");
+            }
         }
     }
 
@@ -237,6 +408,7 @@ public partial class DebugOverlay : CanvasLayer
         {
             int idx = (int)(k.Keycode - Key.Key1);
             if (k.CtrlPressed && idx >= 0 && idx < MapRegistry.Maps.Length) GoToMap(MapRegistry.Maps[idx].Path);
+            else if (k.Keycode == Key.H) hudRoot.Visible = !hudRoot.Visible;
             else if (k.Keycode == Key.L) arena.Ai.LodEnabled = !arena.Ai.LodEnabled;
             else if (k.Keycode == Key.Tab)
             {
@@ -258,18 +430,18 @@ public partial class DebugOverlay : CanvasLayer
 
     public override void _Process(double delta)
     {
+        if (!hudRoot.Visible) return;
+
         var brainList = NpcBase.All.OfType<BrainNpc>().ToList();
         var fsmList = NpcBase.All.OfType<BaselineNpc>().ToList();
         string camName = arena.PlayerNode?.Mode switch
         {
-            Player.CamMode.FirstPerson => "F1: Pemain (FPS)",
-            Player.CamMode.FollowNpc => "F3: Ikuti NPC",
-            _ => "F2: Kamera Atas",
+            Player.CamMode.FirstPerson => "FPS (F1)",
+            Player.CamMode.FollowNpc => "Follow (F3)",
+            _ => "Top-Down (F2)",
         };
-        info.Text = $"FPS {Engine.GetFramesPerSecond()}  |  Kamera: {camName}  |  LOD {(arena.Ai.LodEnabled ? "ON" : "OFF")}\n" +
-                    $"AI Tick: {arena.Ai.LastDecideWallMs:F2} ms wall ({arena.Ai.LastDecideCpuMs:F2} ms CPU)\n" +
-                    "WASD gerak/geser, Scroll zoom (F2), Klik kanan+geser putar kamera, Klik kiri pilih NPC\n" +
-                    "F taruh makanan, Ctrl+1-4 pindah map, L toggle LOD, Tab label";
+        info.Text = $"FPS: {Engine.GetFramesPerSecond()}  |  Kamera: {camName}  |  LOD: {(arena.Ai.LodEnabled ? "ON" : "OFF")}\n" +
+                    $"AI Tick: {arena.Ai.LastDecideWallMs:F2} ms (CPU {arena.Ai.LastDecideCpuMs:F2} ms)  |  Map: {arena.MapTitle}";
 
         // Ringkasan Statistik Komparatif Real-Time (Otak Connectome vs FSM)
         float bFood = brainList.Count > 0 ? brainList.Average(x => x.Metrics.FoodSeconds) : 0f;
@@ -282,27 +454,30 @@ public partial class DebugOverlay : CanvasLayer
         float fDang = fsmList.Count > 0 ? fsmList.Average(x => x.Metrics.TimeInDanger) : 0f;
         float bDist = brainList.Count > 0 ? brainList.Average(x => x.Metrics.Distance) : 0f;
         float fDist = fsmList.Count > 0 ? fsmList.Average(x => x.Metrics.Distance) : 0f;
+
         var st = arena.Stats;
-        var lines = new List<string> { $"── {arena.MapTitle}: 🧠 Otak ({brainList.Count}) vs ⚙️ FSM ({fsmList.Count}) ──" };
-        if (st.HasFlag(MapStats.Food)) lines.Add($"Makan Manis : 🧠 {bFood:F1}s  |  ⚙️ {fFood:F1}s");
-        if (st.HasFlag(MapStats.Poison)) lines.Add($"Gigit Racun : 🧠 {bPois:F1}x  |  ⚙️ {fPois:F1}x");
-        if (st.HasFlag(MapStats.Escape)) lines.Add($"Kabur Looming : 🧠 {bEsc:F1}x  |  ⚙️ {fEsc:F1}x");
-        if (st.HasFlag(MapStats.Danger)) lines.Add($"Di Zona Bahaya: 🧠 {bDang:F1}s  |  ⚙️ {fDang:F1}s");
-        if (st.HasFlag(MapStats.Explore)) lines.Add($"Jarak Tempuh : 🧠 {bDist:F0}m  |  ⚙️ {fDist:F0}m");
+        var lines = new List<string> { $"Populasi: 🧠 Otak ({brainList.Count}) vs ⚙️ FSM ({fsmList.Count})" };
+        if (st.HasFlag(MapStats.Food)) lines.Add($"🍎 Makan Manis : 🧠 {bFood:F1}s  vs  ⚙️ {fFood:F1}s");
+        if (st.HasFlag(MapStats.Poison)) lines.Add($"🤢 Gigit Racun : 🧠 {bPois:F0}x  vs  ⚙️ {fPois:F0}x");
+        if (st.HasFlag(MapStats.Escape)) lines.Add($"🦅 Kabur Looming: 🧠 {bEsc:F0}x  vs  ⚙️ {fEsc:F0}x");
+        if (st.HasFlag(MapStats.Danger)) lines.Add($"⚡ Zona Bahaya : 🧠 {bDang:F1}s  vs  ⚙️ {fDang:F1}s");
+        if (st.HasFlag(MapStats.Explore)) lines.Add($"🧭 Jarak Tempuh : 🧠 {bDist:F0}m  vs  ⚙️ {fDist:F0}m");
         statsLabel.Text = string.Join("\n", lines);
 
         if (selected != null && !IsInstanceValid(selected)) Select(null);
         if (selected == null) return;
+
         var c = selected.Command;
-        string txt = $"{selected.TypeName} [{selected.AiMethod}]  {selected.StatusText}\n" +
-                     $"makan {selected.Metrics.FoodSeconds:F1}s  racun {selected.Metrics.PoisonBites}  disakiti {selected.Metrics.Punishments}  kabur {selected.Metrics.EscapeEvents}\n" +
-                     $"maju {c.Forward:F1} belok {c.Turn:+0.00;-0.00} valensi {c.Valence:+0.00;-0.00}";
+        string txt = $"Nama: {selected.TypeName.ToUpperInvariant()}  [{selected.AiMethod}]  {selected.StatusText}\n" +
+                     $"Metrik: Makan {selected.Metrics.FoodSeconds:F1}s | Racun {selected.Metrics.PoisonBites}x | Bahaya {selected.Metrics.Punishments}x | Kabur {selected.Metrics.EscapeEvents}x\n" +
+                     $"Motorik: Maju {c.Forward:F1} | Belok {c.Turn:+0.00;-0.00} | Valensi {c.Valence:+0.00;-0.00}";
+
         if (selected is BrainNpc b)
         {
             var d = b.Brain.Decoder;
-            txt += $"\nGF {d.Gf:F0}Hz  loomL {d.LoomL:F0} loomR {d.LoomR:F0}  MN9 {d.Mn9:F0}\n" +
-                   $"DNa L {d.TurnL:F0} R {d.TurnR:F0}  MBON+ {d.Approach:F1} MBON- {d.Avoid:F1}\n" +
-                   $"memori KC->MBON {Plasticity.MeanRelativeWeight(b.Brain.State):P1}  {b.DecideMs:F2} ms/tick  LOD x{b.BrainTimeScale}";
+            txt += $"\nSyaraf: GF {d.Gf:F0}Hz | Loom {d.LoomL:F0}/{d.LoomR:F0} | MN9 {d.Mn9:F0}\n" +
+                   $"DNa Turn: L {d.TurnL:F0} / R {d.TurnR:F0} | MBON: +{d.Approach:F1} / -{d.Avoid:F1}\n" +
+                   $"Memori KC->MBON: {Plasticity.MeanRelativeWeight(b.Brain.State):P1} | Tick: {b.DecideMs:F2}ms (LOD x{b.BrainTimeScale})";
             raster.Push();
         }
         detail.Text = txt;
