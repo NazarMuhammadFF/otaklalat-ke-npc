@@ -144,6 +144,35 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   - Pengujian langsung UI & Map Hutan oleh pengguna via `JALANKAN_GAME.bat`.
   - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan grafik data bab 4 (`tools/analysis/analyze_bench.py`).
 
+### [2026-10-19] - Claude Code (#3: otak 3D di Dashboard Bento)
+- **Tindakan**: `scripts/UI/BrainView3D.cs` (baru) dipasang sebagai kartu **🧠 OTAK 3D (NEURON MENYALA)** di `scripts/UI/Dashboard.cs`, baris bawah kolom tengah bersebelahan dengan Spike Raster (memakai `CreateBentoCard`, gaya dan ukuran font sama dengan kartu lain). 2.635 neuron = titik dalam satu `MultiMesh`, menyala saat spike lalu meredup (0,35 s); 7 wilayah bergaya (motor, mata/lobula, lobus antena, pengecap, mushroom body, central complex, lainnya) sebagai blob transparan; legenda jumlah neuron aktif per wilayah di sisi kanan. Seret = putar, scroll = zoom, klik 2x = auto-putar. Hanya NPC Otak terpilih yang digambar (`Select()` di Dashboard memanggil `brain3D.Bind`), tidak dirender saat tidak ada pilihan.
+- **Catatan**: posisi titik = tata letak BERGAYA dari grup fungsional dan sisi kiri/kanan, bukan koordinat anatomi FlyWire. Antarmuka resmi = `Dashboard`; `DebugOverlay` hanya legacy (kartu otak 3D TIDAK dipasang di sana). Legenda header raster dan hint kartu otak memakai `ClipText` agar lebar minimum Dashboard turun (1359 → ~1060 px).
+- **Verifikasi**: build 0 warning/0 error; test 9/9; tangkapan layar Dashboard `--map=2` dengan NPC rusa + drone menukik: wilayah mata (258/314) dan motor (11/14) menyala; update CPU panel ~0,2-0,3 ms/frame.
+
+### [2026-10-19] - Claude Code (#4: pemain sebagai manusia, opsi A+B)
+- **Keputusan (user)**: NPC mengenali manusia lewat ciri sensorik, BUKAN label/aturan. A = looming (sudah ada via `ILooming` di `Player`); B = bau manusia yang bisa dipelajari lewat pengalaman.
+- **Tindakan**: `Player.cs`: badan manusia (badan + kepala + hidung arah hadap + label "KAMU"), `OdorSource` kanal Netral (`EmitsOdor`), sentuhan saat lari (Shift, jarak <1 m, jeda 1,5 s per NPC) memanggil `NpcBase.OnHumanTouch()` (nyeri, sama jalurnya dengan `Hurt`). `NpcBase.cs`: metrik `HumanTouches` dan `HumanFleeDist` (jarak ke pemain saat refleks kabur dimulai; hanya dicatat bila pemain adalah looming terdekat). `Dashboard.cs`: kartu "PEMAIN (MANUSIA)" (centang bau manusia) dan baris statistik "Jarak kabur dari manusia" dan "Disentuh manusia" di map Predator.
+- **Keterbatasan**: bau manusia memakai kanal Netral yang sama dengan zona bahaya, jadi NPC bisa menggeneralisasi bau bahaya dan bau manusia. Mouse look FPS masih klik kanan + geser (belum ada tangkap kursor). Belum ada aturan eksplisit "kabur dari pemain" untuk FSM (pertanyaan terbuka: perlu atau tidak sebagai pembanding authoring effort).
+- **Verifikasi**: build 0 warning/0 error; test 9/9; uji skrip di map Predator (dihapus setelahnya): pemain mendekat dengan lari, NPC mulai kabur di ~5,5 m (21 peristiwa), sentuhan terhitung (touches=1, punish=1); wilayah lobus antena menyala saat bau manusia terdeteksi.
+
+### [2026-10-19] - Antigravity (Gemini) (#7: Pembaruan Visualisasi Ilmiah 3D Connectome Otak Lalat)
+- **Tindakan**:
+  1. Merombak [`scripts/UI/BrainView3D.cs`](scripts/UI/BrainView3D.cs) sesuai spesifikasi visualisasi ilmiah *Drosophila melanogaster* Connectome:
+     - **Cangkang Anatomi Neuropil Organik Berbentuk Sayap Tunggal (`BuildUnifiedDrosophilaShell`)**: Mengevaluasi *Smooth Metaball Isosurface* dari 11 kompartemen anatomi (Central Supraesophageal Brain, Lobula, Medulla & Lamina kiri-kanan berbentuk sayap melebar, Dorsal Mushroom Body Calyx, Antennal Lobes, dan Ventral SEZ) menjadi satu `ArrayMesh` utuh tanpa artefak bola bertumpuk, dilengkapi shader Fresnel *deep-navy & electric blue* serta jaring kontur anatomi (`wireMesh`) dan cincin torus `Ellipsoid Body` di pusat.
+     - **2.635 Point-Cloud Neuron Bercahaya Tajam**: Menggunakan `MultiMesh` billboard dengan *Gaussian radial glow shader* (`core + halo`) dan penempatan anatomis berdasarkan tipe sel FlyWire (`Connectome.Types`):
+       - **Aqua / Light Blue**: `Mata/Lobula (visual)` di bentangan sayap optik kiri & kanan (`314` neuron).
+       - **Magenta / Pink**: `Central complex (compass)` berbentuk cincin torus melingkar di pusat (`367` neuron).
+       - **Kuning / Oranye**: `Mushroom body (memori)` berbentuk lobus L & calyx di tengah-atas (`821` neuron).
+       - **Hijau**: `Lobus antena (bau)` (`16` ALPN) & `Pengecap (SEZ)` (`99` GRN) di bagian bawah.
+       - **Putih & Merah**: `Motor (descending)` (`14` neuron) dan `Interneuron (jalur)` (`1.004` neuron, termasuk jalur turun `DN*`/`LAL*`/`PS*` berwarna merah-putih).
+     - **Jaringan Serat Sinaptik (Akson & Dendrit) & Pulsing Fibers**: Menggambar bundel serat melengkung dari matriks CSR `Connectome` ditambah jaring dendritik retinotopik intra-lobus di sayap optik, serta `ImmediateMesh` serat dinamis yang berdenyut mengikuti lonjakan spike.
+     - **Overlay UI Ilmiah & Mode Aktif Spontan**: Menampilkan header `"DROSOPHILA CONNECTOME 3D VIEW"`, badge `"DATASET: FAFB (FlyWire)"`, dan sidebar `"NEURAL CLUSTERS (ACTIVE/TOTAL)"`. Saat belum ada NPC yang dipilih, tampilan langsung aktif dengan gelombang aktivitas spontan biologis dan langsung beralih ke `LIVE NPC CONNECTOME` saat NPC Otak dipilih.
+  2. Memperbarui [`scripts/UI/Dashboard.cs`](scripts/UI/Dashboard.cs): menambahkan tombol **`⛶ Fokus (B)`** (dan shortcut keyboard **`B`** serta argumen CLI `--focus-brain`) untuk memperbesar kartu 3D Connectome memenuhi kolom tengah kapan saja.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+  - Tangkapan layar verifikasi disimpan di `reports/screenshots/brain_connectome_3d.png` dan `reports/screenshots/bento_dashboard.png`.
+
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
 Keputusan:

@@ -26,16 +26,20 @@ public partial class Dashboard : Control
     Label fpsLabel, tickLabel, lodLabel, mapTitleLabel;
     Label statsLabel, inspectLabel, noticeTraitsLabel;
     OptionButton typeOpt, methodOpt;
-    CheckButton clickSpawnCheck;
+    CheckButton clickSpawnCheck, humanOdorCheck;
     Button[] mapButtons;
     VBoxContainer scenBox;
     readonly List<HSlider> sliders = new();
     readonly List<Label> sliderValLabels = new();
     SpikeRaster raster;
+    BrainView3D brain3D;
+    PanelContainer cardVp, cardRaster;
+    Button brainFocusBtn;
     NpcBase selected;
 
     bool labelsVisible = true;
     bool clickSpawn = false;
+    bool brainFocused = false;
 
     static readonly string[] TraitNames = { "Fearfulness", "Appetite", "Pickiness", "Curiosity", "LearningRate", "NeuralNoise" };
 
@@ -89,6 +93,7 @@ public partial class Dashboard : Control
         // 4. Muat Map Default (atau dari argumen --map=0..3)
         int startMap = 0;
         bool autoShot = false;
+        bool startFocusBrain = false;
         string shotPath = "reports/screenshots/bento_dashboard.png";
         foreach (var raw in OS.GetCmdlineArgs().Concat(OS.GetCmdlineUserArgs()))
         {
@@ -99,8 +104,11 @@ public partial class Dashboard : Control
                 shotPath = a.Substring("screenshot-file=".Length);
             else if (a == "auto-screenshot")
                 autoShot = true;
+            else if (a == "focus-brain")
+                startFocusBrain = true;
         }
         SwitchMap(startMap);
+        if (startFocusBrain) ToggleBrainFocus();
 
         if (autoShot)
         {
@@ -234,6 +242,22 @@ public partial class Dashboard : Control
         var cardScen = CreateBentoCard("🎯 SKENARIO UJI KHUSUS", new Color(0.98f, 0.57f, 0.24f), out scenBox);
         col.AddChild(cardScen);
 
+        // Card 2b: 🧍 Pemain (Manusia)
+        var cardHuman = CreateBentoCard("🧍 PEMAIN (MANUSIA)", new Color(0.55f, 0.9f, 0.45f), out var humanBox);
+        humanOdorCheck = new CheckButton { Text = "Bau manusia (kanal netral)", ButtonPressed = true, FocusMode = FocusModeEnum.None };
+        humanOdorCheck.AddThemeFontSizeOverride("font_size", 11);
+        humanOdorCheck.Toggled += on => { if (currentMap?.PlayerNode != null) currentMap.PlayerNode.EmitsOdor = on; };
+        humanBox.AddChild(humanOdorCheck);
+        var humanHint = new Label
+        {
+            Text = "F1: sudut pandang manusia. Shift = lari; menyentuh NPC saat lari = nyeri (NPC belajar menghindari bau Anda). NPC tidak diberi label 'manusia'.",
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        humanHint.AddThemeFontSizeOverride("font_size", 9);
+        humanHint.AddThemeColorOverride("font_color", new Color(0.6f, 0.7f, 0.8f));
+        humanBox.AddChild(humanHint);
+        col.AddChild(cardHuman);
+
         // Card 3: 📊 Skor Komparatif Real-Time
         var cardStats = CreateBentoCard("📊 SKOR KOMPARATIF REAL-TIME", new Color(0.51f, 0.55f, 0.97f), out var statsBox);
         cardStats.SizeFlagsVertical = SizeFlags.ExpandFill;
@@ -293,21 +317,21 @@ public partial class Dashboard : Control
         camBar.AddChild(btnFol);
 
         // Card 4: 🎮 Viewport Simulasi 3D (SubViewportContainer Frame)
-        var cardVp = CreateBentoCard("🎮 SIMULASI DUNIA 3D", new Color(0.22f, 0.74f, 0.97f), out var vpBox, camBar);
+        cardVp = CreateBentoCard("🎮 SIMULASI DUNIA 3D", new Color(0.22f, 0.74f, 0.97f), out var vpBox, camBar);
         cardVp.SizeFlagsVertical = SizeFlags.ExpandFill;
-        cardVp.SizeFlagsStretchRatio = 2.5f;
-        cardVp.CustomMinimumSize = new Vector2(0, 340);
+        cardVp.SizeFlagsStretchRatio = 2.0f;
+        cardVp.CustomMinimumSize = new Vector2(0, 290);
 
         viewportContainer = new SubViewportContainer
         {
             Stretch = true,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
             SizeFlagsVertical = SizeFlags.ExpandFill,
-            CustomMinimumSize = new Vector2(0, 310),
+            CustomMinimumSize = new Vector2(0, 260),
         };
         subViewport = new SubViewport
         {
-            Size = new Vector2I(800, 500),
+            Size = new Vector2I(800, 460),
             OwnWorld3D = true,
             HandleInputLocally = true,
             RenderTargetUpdateMode = SubViewport.UpdateMode.Always,
@@ -317,15 +341,45 @@ public partial class Dashboard : Control
         vpBox.AddChild(viewportContainer);
         col.AddChild(cardVp);
 
-        // Card 5: ⚡ Spike Raster Neuron (2.635 LIF)
-        var legendLbl = new Label { Text = "Cyan: Sensorik | Kuning: KC/CX | Merah: Motorik" };
+        // Baris bawah: ⚡ Spike Raster Neuron (2.635 LIF) + 🧠 Otak 3D (neuron menyala per wilayah)
+        var bottomRow = new HBoxContainer
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+            CustomMinimumSize = new Vector2(0, 210),
+        };
+        bottomRow.AddThemeConstantOverride("separation", 6);
+        bottomRow.SizeFlagsStretchRatio = 1.45f;
+
+        var legendLbl = new Label { Text = "Cyan: Sensorik | Kuning: KC/CX | Merah: Motorik", ClipText = true };
         legendLbl.AddThemeFontSizeOverride("font_size", 9);
         legendLbl.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.9f));
-        var cardRaster = CreateBentoCard("⚡ SPIKE RASTER (2.635 LIF)", new Color(0.96f, 0.25f, 0.37f), out var rasterBox, legendLbl);
-        cardRaster.CustomMinimumSize = new Vector2(0, 140);
+        cardRaster = CreateBentoCard("⚡ SPIKE RASTER (2.635 LIF)", new Color(0.96f, 0.25f, 0.37f), out var rasterBox, legendLbl);
+        cardRaster.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        cardRaster.SizeFlagsStretchRatio = 0.82f;
         raster = new SpikeRaster { CustomMinimumSize = new Vector2(0, 110), SizeFlagsVertical = SizeFlags.ExpandFill };
         rasterBox.AddChild(raster);
-        col.AddChild(cardRaster);
+        bottomRow.AddChild(cardRaster);
+
+        var brainHeaderRight = new HBoxContainer();
+        brainHeaderRight.AddThemeConstantOverride("separation", 4);
+        var brainHint = new Label { Text = "Seret: putar | Scroll: zoom", ClipText = true };
+        brainHint.AddThemeFontSizeOverride("font_size", 9);
+        brainHint.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 0.9f));
+        brainHeaderRight.AddChild(brainHint);
+
+        brainFocusBtn = new Button { Text = "⛶ Fokus (B)", FocusMode = FocusModeEnum.None };
+        brainFocusBtn.AddThemeFontSizeOverride("font_size", 10);
+        brainFocusBtn.Pressed += ToggleBrainFocus;
+        brainHeaderRight.AddChild(brainFocusBtn);
+
+        var cardBrain = CreateBentoCard("🧠 DROSOPHILA CONNECTOME 3D", new Color(0.25f, 0.88f, 1.0f), out var brainBox, brainHeaderRight);
+        cardBrain.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        cardBrain.SizeFlagsStretchRatio = 1.65f;
+        brain3D = new BrainView3D();
+        brainBox.AddChild(brain3D);
+        bottomRow.AddChild(cardBrain);
+        col.AddChild(bottomRow);
 
         parent.AddChild(col);
     }
@@ -438,6 +492,7 @@ public partial class Dashboard : Control
         subViewport.AddChild(currentMap);
 
         mapTitleLabel.Text = $"Map: {currentMap.MapTitle}";
+        humanOdorCheck.SetPressedNoSignal(true);
 
         // Perbarui tombol skenario uji sesuai map
         RebuildScenarioButtons();
@@ -580,6 +635,12 @@ public partial class Dashboard : Control
         t.LookAt(new Vector3(dz.GlobalPosition.X, startPos.Y, dz.GlobalPosition.Z), Vector3.Up);
     }
 
+    static string AvgFlee(IEnumerable<NpcBase> npcs)
+    {
+        var all = npcs.SelectMany(n => n.Metrics.HumanFleeDist).ToList();
+        return all.Count > 0 ? $"{all.Average():F1} m (n={all.Count})" : "-";
+    }
+
     // =========================================================================
     // SELEKSI & MODULASI 6 KNOB SIFAT
     // =========================================================================
@@ -602,6 +663,7 @@ public partial class Dashboard : Control
     void Select(NpcBase n)
     {
         if (selected is BrainNpc old) old.Brain.CaptureCounts = null;
+        brain3D.Bind(null);
         selected = n;
         if (currentMap?.PlayerNode != null && n != null) currentMap.PlayerNode.FollowTarget = n;
 
@@ -621,6 +683,7 @@ public partial class Dashboard : Control
         {
             b.Brain.CaptureCounts = new int[b.Brain.State.C.N];
             raster.Bind(b.Brain);
+            brain3D.Bind(b.Brain);
             var t = b.Traits;
             float[] vals = { t.Fearfulness, t.Appetite, t.Pickiness, t.Curiosity, t.LearningRate, t.NeuralNoise };
             for (int i = 0; i < vals.Length; i++)
@@ -650,6 +713,7 @@ public partial class Dashboard : Control
             {
                 if (currentMap?.Ai != null) currentMap.Ai.LodEnabled = !currentMap.Ai.LodEnabled;
             }
+            else if (k.Keycode == Key.B) ToggleBrainFocus();
             else if (k.Keycode == Key.F11 || (k.AltPressed && k.Keycode == Key.Enter)) ToggleFullscreen();
             else if (k.Keycode == Key.F12)
             {
@@ -659,6 +723,14 @@ public partial class Dashboard : Control
             }
             else if (k.Keycode == Key.Escape) Select(null);
         }
+    }
+
+    void ToggleBrainFocus()
+    {
+        brainFocused = !brainFocused;
+        if (cardVp != null) cardVp.Visible = !brainFocused;
+        if (cardRaster != null) cardRaster.Visible = !brainFocused;
+        if (brainFocusBtn != null) brainFocusBtn.Text = brainFocused ? "🗗 Split (B)" : "⛶ Fokus (B)";
     }
 
     void ToggleFullscreen()
@@ -700,7 +772,12 @@ public partial class Dashboard : Control
             var st = currentMap.Stats;
             if (st.HasFlag(MapStats.Food)) lines.Add($"🍎 Makan Manis : 🧠 {bFood:F1}s  vs  ⚙️ {fFood:F1}s");
             if (st.HasFlag(MapStats.Poison)) lines.Add($"🤢 Gigit Racun : 🧠 {bPois:F0}x  vs  ⚙️ {fPois:F0}x");
-            if (st.HasFlag(MapStats.Escape)) lines.Add($"🦅 Kabur Looming: 🧠 {bEsc:F0}x  vs  ⚙️ {fEsc:F0}x");
+            if (st.HasFlag(MapStats.Escape))
+            {
+                lines.Add($"🦅 Kabur Looming: 🧠 {bEsc:F0}x  vs  ⚙️ {fEsc:F0}x");
+                lines.Add($"📏 Jarak kabur dari manusia: 🧠 {AvgFlee(brainList)}  vs  ⚙️ {AvgFlee(fsmList)}");
+                lines.Add($"🖐️ Disentuh manusia: 🧠 {brainList.Sum(x => x.Metrics.HumanTouches)}x  vs  ⚙️ {fsmList.Sum(x => x.Metrics.HumanTouches)}x");
+            }
             if (st.HasFlag(MapStats.Danger)) lines.Add($"⚡ Zona Bahaya : 🧠 {bDang:F1}s  vs  ⚙️ {fDang:F1}s");
             if (st.HasFlag(MapStats.Explore)) lines.Add($"🧭 Jarak Tempuh : 🧠 {bDist:F0}m  vs  ⚙️ {fDist:F0}m");
         }

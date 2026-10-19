@@ -165,7 +165,7 @@ public partial class DebugOverlay : CanvasLayer
 
         // --- Card 5: 🔬 Status & Motorik Terurai ---
         cardInspect = CreateBentoCard("🔬 INSPEKSI ENTITAS", new Color(0.18f, 0.83f, 0.75f), out var inspectBox);
-        detail = new Label();
+        detail = new Label { AutowrapMode = TextServer.AutowrapMode.Arbitrary, CustomMinimumSize = new Vector2(350, 0) };
         detail.AddThemeColorOverride("font_color", new Color(0.92f, 0.96f, 1f));
         inspectBox.AddChild(detail);
         rightBento.AddChild(cardInspect);
@@ -203,6 +203,7 @@ public partial class DebugOverlay : CanvasLayer
             HorizontalAlignment = HorizontalAlignment.Center
         };
         legendLbl.AddThemeColorOverride("font_color", new Color(0.8f, 0.85f, 0.9f));
+        legendLbl.AddThemeFontSizeOverride("font_size", 12);
         rasterBox.AddChild(legendLbl);
         raster = new SpikeRaster { CustomMinimumSize = new Vector2(350, 180) };
         rasterBox.AddChild(raster);

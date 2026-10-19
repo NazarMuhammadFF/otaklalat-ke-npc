@@ -21,7 +21,11 @@ public partial class Player : CharacterBody3D, ILooming
     public float LoomRadius => 0.5f;
     public System.Action<Vector3> DropFood;
 
-    MeshInstance3D bodyVisual;
+    Node3D bodyVisual;
+    OdorSource humanOdor;
+    readonly System.Collections.Generic.Dictionary<NpcBase, float> touchCooldown = new();
+    /// <summary>Bau manusia (kanal netral, TIDAK dilabeli): NPC hanya belajar menghindarinya lewat pengalaman disentuh.</summary>
+    public bool EmitsOdor { get => humanOdor?.Active ?? false; set { if (humanOdor != null) humanOdor.Active = value; } }
     Vector3 topDownFocus = new(0, 0, 2f);
     float topDownHeight = 25f, topDownYaw = 0f, topDownPitch = -1.05f;
     float fpPitch = 0f;
@@ -32,13 +36,16 @@ public partial class Player : CharacterBody3D, ILooming
     public override void _Ready()
     {
         AddChild(new CollisionShape3D { Shape = new CapsuleShape3D { Radius = 0.4f, Height = 1.8f }, Position = new Vector3(0, 0.9f, 0) });
-        bodyVisual = new MeshInstance3D
-        {
-            Mesh = new CapsuleMesh { Radius = 0.4f, Height = 1.8f },
-            MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.2f, 0.85f, 0.4f) },
-            Position = new Vector3(0, 0.9f, 0),
-        };
+        // sosok manusia sederhana: badan, kepala, hidung penunjuk arah hadap (-Z), dan label
+        bodyVisual = new Node3D { Name = "HumanBody" };
+        var skin = new StandardMaterial3D { AlbedoColor = new Color(0.2f, 0.85f, 0.4f) };
+        bodyVisual.AddChild(new MeshInstance3D { Mesh = new CapsuleMesh { Radius = 0.3f, Height = 1.5f }, MaterialOverride = skin, Position = new Vector3(0, 0.75f, 0) });
+        bodyVisual.AddChild(new MeshInstance3D { Mesh = new SphereMesh { Radius = 0.2f, Height = 0.4f }, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color(0.95f, 0.8f, 0.65f) }, Position = new Vector3(0, 1.65f, 0) });
+        bodyVisual.AddChild(new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3(0.12f, 0.1f, 0.25f) }, MaterialOverride = skin, Position = new Vector3(0, 1.65f, -0.22f) });
+        bodyVisual.AddChild(new Label3D { Text = "KAMU (manusia)", Position = new Vector3(0, 2.2f, 0), Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, FontSize = 30, OutlineSize = 8, PixelSize = 0.005f, Modulate = new Color(0.6f, 1f, 0.7f) });
         AddChild(bodyVisual);
+        humanOdor = new OdorSource { Name = "HumanOdor", Kind = OdorKind.Neutral, Strength = 1f, Spread = 2.5f, Position = new Vector3(0, 1f, 0) };
+        AddChild(humanOdor);
 
         Camera = new Camera3D { Position = new Vector3(0, 1.7f, 0), Current = true, Far = 400f };
         AddChild(Camera);
@@ -125,6 +132,7 @@ public partial class Player : CharacterBody3D, ILooming
             v.Y = IsOnFloor() ? 0 : v.Y - 9.8f * dt;
             Velocity = v;
             MoveAndSlide();
+            TouchNpcs(dt);
         }
         else if (Mode == CamMode.TopDown)
         {
@@ -153,6 +161,24 @@ public partial class Player : CharacterBody3D, ILooming
             var desiredPos = targetPos + back * 4.8f + new Vector3(0, 2.8f, 0);
             Camera.GlobalPosition = Camera.GlobalPosition.Lerp(desiredPos, Mathf.Clamp(dt * 8f, 0f, 1f));
             Camera.LookAt(targetPos, Vector3.Up);
+        }
+    }
+
+    /// <summary>Menyentuh NPC saat berlari = stimulus nyeri (seperti serangan drone); jeda 1,5 s per NPC.</summary>
+    void TouchNpcs(float dt)
+    {
+        foreach (var k in new System.Collections.Generic.List<NpcBase>(touchCooldown.Keys))
+        {
+            if (!IsInstanceValid(k) || (touchCooldown[k] -= dt) <= 0f) touchCooldown.Remove(k);
+        }
+        if (!Input.IsKeyPressed(Key.Shift)) return;
+        foreach (var n in NpcBase.All)
+        {
+            if (touchCooldown.ContainsKey(n)) continue;
+            var d = n.GlobalPosition - GlobalPosition; d.Y = 0;
+            if (d.Length() > 1.0f) continue;
+            n.OnHumanTouch();
+            touchCooldown[n] = 1.5f;
         }
     }
 }

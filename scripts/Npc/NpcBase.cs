@@ -9,7 +9,8 @@ namespace OtakLalat.Npc;
 public sealed class NpcMetrics
 {
     public float FoodSeconds, TimeInDanger, Distance;
-    public int PoisonBites, PredatorHits, DangerEntries, EscapeEvents, Punishments;
+    public int PoisonBites, PredatorHits, DangerEntries, EscapeEvents, Punishments, HumanTouches;
+    public readonly List<float> HumanFleeDist = new();   // jarak ke pemain saat refleks kabur dimulai (ukuran terukur Fearfulness)
     public readonly List<(float t, float x, float z, int action, float valence)> Path = new();
     public readonly Dictionary<int, float> ActionTime = new();   // aksi -> detik (untuk entropi)
 }
@@ -269,7 +270,11 @@ public abstract partial class NpcBase : CharacterBody3D
         if (inDanger) { Metrics.TimeInDanger += dt; if (punishTimer <= 0) Hurt(0.5f); }
         if (inDanger && !wasInDanger) Metrics.DangerEntries++;
         wasInDanger = inDanger;
-        if (cmd.Escape && !wasEscaping) Metrics.EscapeEvents++;
+        if (cmd.Escape && !wasEscaping)
+        {
+            Metrics.EscapeEvents++;
+            RecordHumanFlee();
+        }
         wasEscaping = cmd.Escape;
         punishTimer -= dt;
 
@@ -306,6 +311,24 @@ public abstract partial class NpcBase : CharacterBody3D
     }
 
     protected virtual void OnHurt() { }
+
+    /// <summary>Catat jarak ke pemain bila pemain adalah pemicu looming terdekat saat kabur dimulai.</summary>
+    void RecordHumanFlee()
+    {
+        ILooming nearest = null; float best = float.MaxValue;
+        foreach (var l in WorldRegistry.Loomers)
+        {
+            float d = GlobalPosition.DistanceTo(l.LoomPosition);
+            if (d < best) { best = d; nearest = l; }
+        }
+        if (nearest is Player) Metrics.HumanFleeDist.Add(best);
+    }
+
+    public void OnHumanTouch()
+    {
+        Metrics.HumanTouches++;
+        Hurt(1f);
+    }
 
     public void OnPredatorHit()
     {
