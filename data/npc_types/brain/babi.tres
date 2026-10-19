@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Brain/TraitProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Babi"
+BodyColor = Color(0.95, 0.6, 0.7, 1)
+Fearfulness = 0.4
+Appetite = 1.8
+Pickiness = 0.3
+Curiosity = 0.7
+LearningRate = 0.6
+NeuralNoise = 0.8

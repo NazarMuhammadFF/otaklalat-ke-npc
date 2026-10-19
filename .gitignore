@@ -1,0 +1,19 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# .NET
+bin/
+obj/
+*.user
+.vs/
+
+# FlyWire raw data (download manually from codex.flywire.ai)
+tools/connectome/raw/
+__pycache__/
+.venv/
+bench_out/
+cache/
+
+# Pengaturan lokal agen
+.claude/settings.local.json

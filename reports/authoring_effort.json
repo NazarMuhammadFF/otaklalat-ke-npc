@@ -1,0 +1,30 @@
+{
+  "brain": {
+    "params_per_type": 6,
+    "types": {
+      "babi": 6,
+      "kucing": 6,
+      "penduduk": 6,
+      "rusa": 6
+    },
+    "behavior_logic_loc": 0,
+    "behavior_states": 0,
+    "behavior_transitions": 0,
+    "glue_loc (encoder/decoder, sekali untuk semua tipe)": 109,
+    "engine_loc (generik, dapat dipakai ulang)": 340,
+    "pipeline_loc (offline)": 277
+  },
+  "fsm": {
+    "params_per_type": 13,
+    "types": {
+      "babi": 13,
+      "kucing": 13,
+      "penduduk": 13,
+      "rusa": 13
+    },
+    "behavior_logic_loc": 110,
+    "behavior_states": 5,
+    "behavior_transitions": 7,
+    "behavior_conditions": 30
+  }
+}

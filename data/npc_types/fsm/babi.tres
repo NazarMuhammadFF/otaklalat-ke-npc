@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FsmProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Npc/FsmProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Babi"
+BodyColor = Color(0.95, 0.6, 0.7, 1)
+FleeLoomThreshold = 0.7
+FleeDuration = 0.8
+HungerRate = 0.036
+SeekHungerThreshold = 0.2
+EatHungerThreshold = 0.05
+OdorFollowGain = 3.0
+PoisonEatChance = 0.4
+WanderTurnInterval = 3.0
+WanderTurnMagnitude = 0.4
+RememberChance = 0.4
+MemoryDuration = 120
+AvoidGain = 1.5
+TurnJitter = 0.1

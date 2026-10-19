@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FsmProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Npc/FsmProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Rusa"
+BodyColor = Color(0.76, 0.55, 0.33, 1)
+FleeLoomThreshold = 0.1
+FleeDuration = 2.5
+HungerRate = 0.016
+SeekHungerThreshold = 0.45
+EatHungerThreshold = 0.15
+OdorFollowGain = 2.5
+PoisonEatChance = 0.02
+WanderTurnInterval = 2.5
+WanderTurnMagnitude = 0.5
+RememberChance = 0.95
+MemoryDuration = 300
+AvoidGain = 3.0
+TurnJitter = 0.15

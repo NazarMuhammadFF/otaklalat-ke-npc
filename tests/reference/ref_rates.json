@@ -1,0 +1,68 @@
+{
+  "dt": 0.5,
+  "ms": 1000,
+  "trials": 8,
+  "stimuli": {
+    "sugar_L": {
+      "input": {
+        "in_sugar_L": 100
+      },
+      "rates_hz": {
+        "out_mn9": 144.125,
+        "out_gf": 0.0,
+        "out_loom_L": 0.0,
+        "out_loom_R": 0.0,
+        "out_turn_L": 9.625,
+        "out_turn_R": 2.8125,
+        "out_mbon_approach": 0.0,
+        "out_mbon_avoid": 0.0
+      }
+    },
+    "loom_L": {
+      "input": {
+        "in_loom_L": 50
+      },
+      "rates_hz": {
+        "out_mn9": 0.0,
+        "out_gf": 79.5,
+        "out_loom_L": 126.83333333333333,
+        "out_loom_R": 0.0,
+        "out_turn_L": 0.0,
+        "out_turn_R": 0.0,
+        "out_mbon_approach": 0.0,
+        "out_mbon_avoid": 0.0
+      }
+    },
+    "cx_tonic": {
+      "input": {
+        "in_epg": 40
+      },
+      "rates_hz": {
+        "out_mn9": 0.0,
+        "out_gf": 0.0,
+        "out_loom_L": 0.0,
+        "out_loom_R": 0.0,
+        "out_turn_L": 10.625,
+        "out_turn_R": 28.1875,
+        "out_mbon_approach": 0.0,
+        "out_mbon_avoid": 0.0
+      }
+    },
+    "odor_food": {
+      "input": {
+        "in_odor_food_L": 100,
+        "in_odor_food_R": 100
+      },
+      "rates_hz": {
+        "out_mn9": 0.0,
+        "out_gf": 0.0,
+        "out_loom_L": 0.0,
+        "out_loom_R": 0.0,
+        "out_turn_L": 0.0,
+        "out_turn_R": 0.0,
+        "out_mbon_approach": 11.294642857142858,
+        "out_mbon_avoid": 9.65625
+      }
+    }
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "stimuli": {
+    "gula_kiri": {
+      "corr_rates": 0.8838103005286088,
+      "n_active": 95,
+      "outputs": {
+        "out_mn9": {
+          "whole_brain_hz": 73.0,
+          "subcircuit_hz": 121.0
+        }
+      }
+    },
+    "gula+pahit_kiri": {
+      "corr_rates": 0.959072656549028,
+      "n_active": 71,
+      "outputs": {
+        "out_mn9": {
+          "whole_brain_hz": 4.5,
+          "subcircuit_hz": 0.0
+        }
+      }
+    },
+    "looming_kiri": {
+      "corr_rates": 0.937920248739708,
+      "n_active": 102,
+      "outputs": {
+        "out_gf": {
+          "whole_brain_hz": 125.5,
+          "subcircuit_hz": 72.5
+        },
+        "out_loom_L": {
+          "whole_brain_hz": 125.33333333333333,
+          "subcircuit_hz": 125.0
+        },
+        "out_loom_R": {
+          "whole_brain_hz": 0.0,
+          "subcircuit_hz": 0.0
+        }
+      }
+    },
+    "looming_kanan": {
+      "corr_rates": 0.9227545464467934,
+      "n_active": 83,
+      "outputs": {
+        "out_gf": {
+          "whole_brain_hz": 121.5,
+          "subcircuit_hz": 83.5
+        },
+        "out_loom_L": {
+          "whole_brain_hz": 0.0,
+          "subcircuit_hz": 0.0
+        },
+        "out_loom_R": {
+          "whole_brain_hz": 97.66666666666667,
+          "subcircuit_hz": 99.66666666666667
+        }
+      }
+    },
+    "cx_tonik+PEN_kiri": {
+      "corr_rates": 0.9284614951123993,
+      "n_active": 315,
+      "outputs": {
+        "out_turn_L": {
+          "whole_brain_hz": 21.0,
+          "subcircuit_hz": 7.0
+        },
+        "out_turn_R": {
+          "whole_brain_hz": 10.5,
+          "subcircuit_hz": 23.0
+        }
+      }
+    },
+    "cx_tonik+PEN_kanan": {
+      "corr_rates": 0.925480861085632,
+      "n_active": 316,
+      "outputs": {
+        "out_turn_L": {
+          "whole_brain_hz": 26.0,
+          "subcircuit_hz": 12.5
+        },
+        "out_turn_R": {
+          "whole_brain_hz": 15.5,
+          "subcircuit_hz": 17.5
+        }
+      }
+    }
+  },
+  "mb": {
+    "food": {
+      "kc_active_frac": 0.135,
+      "mbon_avoid_hz": 9.0,
+      "mbon_approach_hz": 15.285714285714286
+    },
+    "poison": {
+      "kc_active_frac": 0.045,
+      "mbon_avoid_hz": 1.75,
+      "mbon_approach_hz": 8.0
+    },
+    "neutral": {
+      "kc_active_frac": 0.0375,
+      "mbon_avoid_hz": 0.5,
+      "mbon_approach_hz": 0.8571428571428571
+    },
+    "jaccard_food_poison": 0.014084507042253521,
+    "jaccard_food_neutral": 0.014705882352941176,
+    "jaccard_poison_neutral": 0.0
+  },
+  "overall_corr": 0.9091932816857555
+}

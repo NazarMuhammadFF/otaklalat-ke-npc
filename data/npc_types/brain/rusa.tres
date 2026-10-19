@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Brain/TraitProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Rusa"
+BodyColor = Color(0.76, 0.55, 0.33, 1)
+Fearfulness = 1.8
+Appetite = 0.8
+Pickiness = 1.2
+Curiosity = 0.8
+LearningRate = 1.6
+NeuralNoise = 1.0

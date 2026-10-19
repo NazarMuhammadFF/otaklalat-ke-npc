@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Brain/TraitProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Kucing"
+BodyColor = Color(0.55, 0.55, 0.6, 1)
+Fearfulness = 1.0
+Appetite = 1.0
+Pickiness = 1.8
+Curiosity = 1.7
+LearningRate = 1.0
+NeuralNoise = 1.3

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FsmProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Npc/FsmProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Penduduk"
+BodyColor = Color(0.3, 0.5, 0.9, 1)
+FleeLoomThreshold = 0.3
+FleeDuration = 1.5
+HungerRate = 0.02
+SeekHungerThreshold = 0.35
+EatHungerThreshold = 0.15
+OdorFollowGain = 2.5
+PoisonEatChance = 0.05
+WanderTurnInterval = 2.0
+WanderTurnMagnitude = 0.6
+RememberChance = 0.8
+MemoryDuration = 240
+AvoidGain = 2.5
+TurnJitter = 0.15

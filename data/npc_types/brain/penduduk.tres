@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Brain/TraitProfile.cs" id="1"]
+
+[resource]
+script = ExtResource("1")
+DisplayName = "Penduduk"
+BodyColor = Color(0.3, 0.5, 0.9, 1)
+Fearfulness = 1.0
+Appetite = 1.0
+Pickiness = 1.0
+Curiosity = 1.0
+LearningRate = 1.0
+NeuralNoise = 1.0
