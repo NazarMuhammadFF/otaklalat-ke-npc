@@ -13,17 +13,19 @@ namespace OtakLalat.UI;
 /// </summary>
 public partial class DebugOverlay : CanvasLayer
 {
-    Arena arena;
+    MapBase arena;
     Label info, statsLabel, detail;
     VBoxContainer panel;
     readonly List<HSlider> sliders = new();
     SpikeRaster raster;
     NpcBase selected;
     bool labels = true;
+    bool clickSpawn;
+    OptionButton typeOpt, methodOpt;
     static readonly string[] TraitNames = { "Fearfulness", "Appetite", "Pickiness", "Curiosity", "LearningRate", "NeuralNoise" };
 
     public DebugOverlay() { }
-    public DebugOverlay(Arena arena) => this.arena = arena;
+    public DebugOverlay(MapBase arena) => this.arena = arena;
 
     public override void _Ready()
     {
@@ -37,23 +39,52 @@ public partial class DebugOverlay : CanvasLayer
         info.AddThemeColorOverride("font_shadow_color", Colors.Black);
         leftBox.AddChild(info);
 
-        // Baris Tombol Kamera (F1 / F2 / F3)
+        // Baris Tombol Kamera (F1 / F2 / F3) & Layar Penuh
         var camRow = new HBoxContainer();
         AddBtn(camRow, "F1: Pemain (FPS)", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.FirstPerson));
-        AddBtn(camRow, "F2: Kamera Atas (4 Kuadran)", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.TopDown));
+        AddBtn(camRow, "F2: Kamera Atas", () => arena.PlayerNode?.SetCameraMode(Player.CamMode.TopDown));
         AddBtn(camRow, "F3: Ikuti NPC", () =>
         {
             if (selected == null) Select(NpcBase.All.OfType<BrainNpc>().FirstOrDefault() ?? NpcBase.All.FirstOrDefault());
             arena.PlayerNode?.SetCameraMode(Player.CamMode.FollowNpc, selected);
         });
+        AddBtn(camRow, "⛶ Layar Penuh (F11)", ToggleFullscreen);
         leftBox.AddChild(camRow);
 
-        // Baris Tombol Skenario Uji Satu-Klik
+        // Baris Navigasi Map (Ctrl+1..4)
+        string current = arena.SceneFilePath;
+        var mapRow = new HBoxContainer();
+        mapRow.AddChild(new Label { Text = "Map:" });
+        for (int i = 0; i < MapRegistry.Maps.Length; i++)
+        {
+            var (title, path) = MapRegistry.Maps[i];
+            AddBtn(mapRow, $"{i + 1} {title}", () => GoToMap(path), disabled: path == current);
+        }
+        leftBox.AddChild(mapRow);
+        leftBox.AddChild(new Label { Text = $"Map aktif: {arena.MapTitle}" });
+
+        // Baris Spawn Manual
+        var spawnRow = new HBoxContainer();
+        typeOpt = new OptionButton { FocusMode = Control.FocusModeEnum.None };
+        foreach (var t in MapBase.TypeIds) typeOpt.AddItem(t);
+        methodOpt = new OptionButton { FocusMode = Control.FocusModeEnum.None };
+        methodOpt.AddItem("Otak"); methodOpt.AddItem("FSM");
+        spawnRow.AddChild(new Label { Text = "Spawn:" });
+        spawnRow.AddChild(typeOpt);
+        spawnRow.AddChild(methodOpt);
+        AddBtn(spawnRow, "Spawn", SpawnAtScreenCenter);
+        AddBtn(spawnRow, "Hapus semua", () => { Select(null); arena.ClearNpcs(); });
+        leftBox.AddChild(spawnRow);
+        var clickChk = new CheckButton { Text = "Klik lantai untuk spawn", FocusMode = Control.FocusModeEnum.None };
+        clickChk.Toggled += on => clickSpawn = on;
+        leftBox.AddChild(clickChk);
+
+        // Baris Tombol Skenario Uji (hanya yang relevan untuk map ini)
         var scenRow = new HBoxContainer();
-        AddBtn(scenRow, "🦅 Uji Looming", TriggerLoomingTest);
-        AddBtn(scenRow, "🍎 Uji Makan vs Racun", TriggerFeedingTest);
-        AddBtn(scenRow, "⚡ Uji Belajar Bahaya", TriggerDangerLearningTest);
-        leftBox.AddChild(scenRow);
+        if (arena.Stats.HasFlag(MapStats.Escape)) AddBtn(scenRow, "🦅 Uji Looming", TriggerLoomingTest);
+        if (arena.Stats.HasFlag(MapStats.Food) || arena.Stats.HasFlag(MapStats.Poison)) AddBtn(scenRow, "🍎 Uji Makan vs Racun", TriggerFeedingTest);
+        if (arena.Stats.HasFlag(MapStats.Danger)) AddBtn(scenRow, "⚡ Uji Belajar Bahaya", TriggerDangerLearningTest);
+        if (scenRow.GetChildCount() > 0) leftBox.AddChild(scenRow);
 
         statsLabel = new Label();
         statsLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.95f, 1f));
@@ -80,11 +111,36 @@ public partial class DebugOverlay : CanvasLayer
         panel.AddChild(raster);
     }
 
-    static void AddBtn(Container parent, string text, System.Action onClick)
+    static void AddBtn(Container parent, string text, System.Action onClick, bool disabled = false)
     {
-        var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None };
+        var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None, Disabled = disabled };
         b.Pressed += onClick;
         parent.AddChild(b);
+    }
+
+    void GoToMap(string path) => GetTree().ChangeSceneToFile(path);
+
+    bool GroundPoint(Vector2 screenPos, out Vector3 point)
+    {
+        point = default;
+        var cam = GetViewport().GetCamera3D();
+        if (cam == null) return false;
+        var hit = new Plane(Vector3.Up, 0f).IntersectsRay(cam.ProjectRayOrigin(screenPos), cam.ProjectRayNormal(screenPos));
+        if (hit == null) return false;
+        point = hit.Value;
+        return true;
+    }
+
+    void SpawnNpcAt(Vector3 p)
+    {
+        var n = arena.SpawnNpc(typeOpt.GetItemText(typeOpt.Selected), methodOpt.Selected == 0, p);
+        Select(n);
+    }
+
+    void SpawnAtScreenCenter()
+    {
+        var center = GetViewport().GetVisibleRect().Size / 2f;
+        SpawnNpcAt(GroundPoint(center, out var p) ? p : arena.RandomSpot());
     }
 
     NpcBase EnsureTargetNpc(string preferredType = null)
@@ -165,6 +221,11 @@ public partial class DebugOverlay : CanvasLayer
     {
         if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } mb)
         {
+            if (clickSpawn)
+            {
+                if (GroundPoint(mb.Position, out var gp)) SpawnNpcAt(gp);
+                return;
+            }
             var cam = GetViewport().GetCamera3D();
             if (cam == null) return;
             var from = cam.ProjectRayOrigin(mb.Position);
@@ -175,11 +236,7 @@ public partial class DebugOverlay : CanvasLayer
         else if (e is InputEventKey { Pressed: true } k)
         {
             int idx = (int)(k.Keycode - Key.Key1);
-            if (idx >= 0 && idx < Arena.TypeIds.Length)
-            {
-                if (k.ShiftPressed) arena.SpawnFsm(Arena.TypeIds[idx], arena.RandomSpot());
-                else arena.SpawnBrain(Arena.TypeIds[idx], arena.RandomSpot());
-            }
+            if (k.CtrlPressed && idx >= 0 && idx < MapRegistry.Maps.Length) GoToMap(MapRegistry.Maps[idx].Path);
             else if (k.Keycode == Key.L) arena.Ai.LodEnabled = !arena.Ai.LodEnabled;
             else if (k.Keycode == Key.Tab)
             {
@@ -187,8 +244,16 @@ public partial class DebugOverlay : CanvasLayer
                 foreach (var n in NpcBase.All) n.ShowLabel = labels;
                 foreach (var z in arena.ZoneLabels) z.Visible = labels;
             }
+            else if (k.Keycode == Key.F11 || (k.AltPressed && k.Keycode == Key.Enter)) ToggleFullscreen();
             else if (k.Keycode == Key.Escape) Select(null);
         }
+    }
+
+    void ToggleFullscreen()
+    {
+        var m = DisplayServer.WindowGetMode();
+        bool isFull = m == DisplayServer.WindowMode.Fullscreen || m == DisplayServer.WindowMode.ExclusiveFullscreen;
+        DisplayServer.WindowSetMode(isFull ? DisplayServer.WindowMode.Maximized : DisplayServer.WindowMode.Fullscreen);
     }
 
     public override void _Process(double delta)
@@ -199,12 +264,12 @@ public partial class DebugOverlay : CanvasLayer
         {
             Player.CamMode.FirstPerson => "F1: Pemain (FPS)",
             Player.CamMode.FollowNpc => "F3: Ikuti NPC",
-            _ => "F2: Kamera Atas (4 Kuadran)",
+            _ => "F2: Kamera Atas",
         };
         info.Text = $"FPS {Engine.GetFramesPerSecond()}  |  Kamera: {camName}  |  LOD {(arena.Ai.LodEnabled ? "ON" : "OFF")}\n" +
                     $"AI Tick: {arena.Ai.LastDecideWallMs:F2} ms wall ({arena.Ai.LastDecideCpuMs:F2} ms CPU)\n" +
                     "WASD gerak/geser, Scroll zoom (F2), Klik kanan+geser putar kamera, Klik kiri pilih NPC\n" +
-                    "F taruh makanan, 1-4 spawn Otak (Shift+1-4 FSM), L toggle LOD, Tab label";
+                    "F taruh makanan, Ctrl+1-4 pindah map, L toggle LOD, Tab label";
 
         // Ringkasan Statistik Komparatif Real-Time (Otak Connectome vs FSM)
         float bFood = brainList.Count > 0 ? brainList.Average(x => x.Metrics.FoodSeconds) : 0f;
@@ -215,10 +280,16 @@ public partial class DebugOverlay : CanvasLayer
         float fPois = fsmList.Count > 0 ? (float)fsmList.Average(x => x.Metrics.PoisonBites) : 0f;
         float bDang = brainList.Count > 0 ? brainList.Average(x => x.Metrics.TimeInDanger) : 0f;
         float fDang = fsmList.Count > 0 ? fsmList.Average(x => x.Metrics.TimeInDanger) : 0f;
-        statsLabel.Text =
-            $"── Skor Rata-Rata Populasi: 🧠 Otak ({brainList.Count}) vs ⚙️ FSM ({fsmList.Count}) ──\n" +
-            $"Makan Manis : 🧠 {bFood:F1}s  |  ⚙️ {fFood:F1}s     Kabur Looming : 🧠 {bEsc:F1}x  |  ⚙️ {fEsc:F1}x\n" +
-            $"Gigit Racun : 🧠 {bPois:F1}x  |  ⚙️ {fPois:F1}x     Di Zona Bahaya: 🧠 {bDang:F1}s  |  ⚙️ {fDang:F1}s";
+        float bDist = brainList.Count > 0 ? brainList.Average(x => x.Metrics.Distance) : 0f;
+        float fDist = fsmList.Count > 0 ? fsmList.Average(x => x.Metrics.Distance) : 0f;
+        var st = arena.Stats;
+        var lines = new List<string> { $"── {arena.MapTitle}: 🧠 Otak ({brainList.Count}) vs ⚙️ FSM ({fsmList.Count}) ──" };
+        if (st.HasFlag(MapStats.Food)) lines.Add($"Makan Manis : 🧠 {bFood:F1}s  |  ⚙️ {fFood:F1}s");
+        if (st.HasFlag(MapStats.Poison)) lines.Add($"Gigit Racun : 🧠 {bPois:F1}x  |  ⚙️ {fPois:F1}x");
+        if (st.HasFlag(MapStats.Escape)) lines.Add($"Kabur Looming : 🧠 {bEsc:F1}x  |  ⚙️ {fEsc:F1}x");
+        if (st.HasFlag(MapStats.Danger)) lines.Add($"Di Zona Bahaya: 🧠 {bDang:F1}s  |  ⚙️ {fDang:F1}s");
+        if (st.HasFlag(MapStats.Explore)) lines.Add($"Jarak Tempuh : 🧠 {bDist:F0}m  |  ⚙️ {fDist:F0}m");
+        statsLabel.Text = string.Join("\n", lines);
 
         if (selected != null && !IsInstanceValid(selected)) Select(null);
         if (selected == null) return;

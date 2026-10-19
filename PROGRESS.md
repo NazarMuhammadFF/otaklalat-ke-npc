@@ -80,12 +80,34 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
 - **Tugas Berikutnya**:
   - Jalankan matriks benchmark headless (`tools/analysis/run_benchmarks.py`) dan analisis plot (`tools/analysis/analyze_bench.py`) untuk menghasilkan grafik kuantitatif di `reports/figures/`.
 
+### [2026-10-19] - Claude Code (#2: pemisahan map)
+- **Tindakan**:
+  1. `scripts/World/MapBase.cs` (baru): basis map (lingkungan, AI, pemain, overlay, API spawn `SpawnNpc/ClearNpcs`). `Arena.cs` kini turunan `MapBase` (layout lama, auto-spawn 24 NPC, mode benchmark).
+  2. 4 map di `scenes/maps/Map_*.tscn` + `scripts/World/Maps/`: Makan vs Racun, Bahaya & Belajar, Koridor Predator, Hutan Navigasi. Map mulai kosong.
+  3. `DebugOverlay`: tombol pindah map + `Ctrl+1..4`, panel spawn (tipe, Otak/FSM, Spawn, Hapus semua, klik lantai), tombol skenario dan statistik hanya yang relevan per map. Hotkey spawn lama 1-4 dihapus. `scripts/UI/MapRegistry.cs` menyimpan daftar map.
+- **Verifikasi**: build 0 warning/0 error; test 9/9; tangkapan layar tiap map via `--write-movie`; benchmark headless `--bench=brain --n=10 --duration=5` menghasilkan csv. Klik spawn dan pindah map via UI **belum diuji interaktif**.
+### [2026-10-19] - Antigravity (Gemini) (#3: adaptasi ukuran layar & launcher satu-klik)
+- **Tindakan**:
+  1. Menyesuaikan konfigurasi window di [`project.godot`](project.godot): `viewport_width=1280`, `viewport_height=720`, `mode=2` (Maximized secara otomatis saat mulai agar pas penuh dengan monitor pengguna), `resizable=true`, `initial_position_type=2` (Centered), dengan stretch mode `canvas_items` dan aspect `expand`.
+  2. Memastikan `run/main_scene="res://scenes/maps/Map_MakanRacun.tscn"` dan memulihkan scene `scenes/Arena.tscn` (membersihkan duplikat di `data/Arena.tscn`).
+  3. Memperbarui [`scripts/UI/DebugOverlay.cs`](scripts/UI/DebugOverlay.cs): menambahkan tombol `⛶ Layar Penuh (F11)` serta shortcut keyboard `F11` dan `Alt+Enter` untuk toggle instan antara Maximized dan Fullscreen.
+  4. Membuat file launcher satu-klik [`JALANKAN_GAME.bat`](JALANKAN_GAME.bat) di direktori utama proyek yang mengeksekusi Godot Mono Windows secara langsung, mempermudah pengguna/penguji menjalankan prototype tanpa perlu mengetik di terminal.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning(s), 0 Error(s).
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
+- **Tugas Berikutnya**:
+  - Pengujian interaktif UI spawn & navigasi antar-map oleh pengguna.
+  - Eksekusi benchmark headless final (`tools/analysis/run_benchmarks.py`) dan pembuatan plot statistik (`tools/analysis/analyze_bench.py`) untuk data Tugas Akhir.
+
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
-Keputusan: bahasa C# saja, 6 knob sifat, arena 40×40 m dengan 4 kuadran.
+Keputusan:
+- Bahasa C# (.NET 8) tanpa GDScript, 6 knob biologis murni tanpa hardcoded behaviors di `BrainNpc`.
+- 4 map uji terpisah 40×40 m (`scenes/maps/`), NPC di-spawn manual lewat overlay.
+- Window game di-set auto-maximized (`mode=2`, `resizable=true`) + dukungan `F11` fullscreen toggle.
+- File batch launcher disediakan sebagai `JALANKAN_GAME.bat`.
 
 Belum diputuskan (jawab lalu catat di sini):
-- Batas antar kuadran: terbuka atau bersekat batu/pohon?
 - Visualisasi aroma: cincin transparan di lantai atau partikel kabut?
 - Skala benchmark: ringan (N=10-24) atau matriks penuh (N=10/50/100/200)?
-- File `jalankan_pengujian.bat` satu-klik: perlu atau tidak?
+

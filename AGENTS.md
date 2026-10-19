@@ -22,7 +22,8 @@ Dokumen ini adalah **satu-satunya sumber aturan** (`CLAUDE.md` dan `GEMINI.md` h
 2. **Pemisahan Lapisan (Layer Separation)**:
    - `scripts/Brain/Core/`: Murni pustaka C# matematika/saraf, **TIDAK BOLEH BERGANTUNG PADA GODOT** (`using Godot;` dilarang di Core). Hal ini agar simulasi saraf bisa diuji secara headless dan di-benchmark independen.
    - `scripts/Npc/`: Implementasi tubuh NPC bersama (`NpcBase`), NPC Otak (`BrainNpc`), NPC FSM (`BaselineNpc`), dan manajer penjadwalan AI (`AiManager`).
-   - `scripts/World/`: Lingkungan 3D, makanan/racun, bahaya, drone predator, dan pemain.
+   - `scripts/World/`: Lingkungan 3D, makanan/racun, bahaya, drone predator, dan pemain. `MapBase.cs` = basis semua map; `Maps/` = 4 map uji; `Arena.cs` = arena gabungan khusus **benchmark headless**.
+   - `scenes/maps/`: satu scene per map uji interaktif (Ctrl+1..4). NPC tidak di-spawn otomatis; pengguna menaruhnya lewat overlay.
    - `scripts/UI/`: Debug overlay, raster spike real-time, dan slider knob sifat.
 
 3. **Integritas 6 Knob Sifat (Traits)**:
