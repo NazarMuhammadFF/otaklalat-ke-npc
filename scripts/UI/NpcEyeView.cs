@@ -24,17 +24,21 @@ public partial class NpcEyeView : VBoxContainer
     readonly SubViewportContainer camBox;
     readonly SensorPanel sensor;
     readonly Label placeholder;
+    readonly CheckBox retinaToggle;
     readonly List<(VisualInstance3D node, uint layers)> hidden = new();
     NpcBase npc;
 
     public NpcEyeView()
     {
         SizeFlagsVertical = SizeFlags.ExpandFill;
+        AddThemeConstantOverride("separation", 4);
+
         ModeSelect = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = true };
         ModeSelect.AddItem("📷 Kamera NPC");
         ModeSelect.AddItem("🧠 Input Otak");
         ModeSelect.AddItem("🔬 Retina (sektor)");
         ModeSelect.AddThemeFontSizeOverride("font_size", 10);
+        AddChild(ModeSelect);
 
         var stack = new Control { CustomMinimumSize = new Vector2(0, 120), SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true };
         AddChild(stack);
@@ -61,6 +65,15 @@ public partial class NpcEyeView : VBoxContainer
         placeholder.AddThemeFontSizeOverride("font_size", 11);
         placeholder.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.8f));
         stack.AddChild(placeholder);
+
+        // ubah jalur penglihatan NPC Otak terpilih secara langsung (tanpa spawn ulang)
+        retinaToggle = new CheckBox { Text = "Retina untuk NPC ini", FocusMode = FocusModeEnum.None, Visible = false };
+        retinaToggle.AddThemeFontSizeOverride("font_size", 10);
+        retinaToggle.Toggled += on =>
+        {
+            if (npc is BrainNpc) npc.Vision = on ? VisionMode.Retinotopic : VisionMode.Scalar;
+        };
+        AddChild(retinaToggle);
 
         ModeSelect.ItemSelected += _ => Refresh();
         Refresh();
@@ -101,6 +114,8 @@ public partial class NpcEyeView : VBoxContainer
         sensor.Visible = !cam && npc != null;
         sensor.Retina = ModeSelect.Selected == 2;
         placeholder.Visible = npc == null;
+        retinaToggle.Visible = npc is BrainNpc;
+        if (npc != null) retinaToggle.SetPressedNoSignal(npc.Vision == VisionMode.Retinotopic);
     }
 
     public override void _Process(double delta)
@@ -188,7 +203,7 @@ public partial class NpcEyeView : VBoxContainer
             float w = Size.X, h = Size.Y, cx = w / 2f;
             if (b == null || f.LoomBinsL == null || f.LoomBinsR == null)
             {
-                string msg = b == null ? "NPC FSM: tanpa retina (membaca looming skalar L/R)" : "NPC ini memakai penglihatan Skalar. Spawn dengan 'Otak·retina' untuk peta sektor.";
+                string msg = b == null ? "NPC FSM: tanpa retina (membaca looming skalar L/R)" : "NPC ini memakai penglihatan Skalar. Nyalakan 'Retina untuk NPC ini' di bawah, atau spawn dengan 'Otak·retina'.";
                 DrawMultilineString(font, new Vector2(6, h / 2 - 8), msg, HorizontalAlignment.Center, w - 12, 10, -1, new Color(0.75f, 0.8f, 0.85f));
                 return;
             }

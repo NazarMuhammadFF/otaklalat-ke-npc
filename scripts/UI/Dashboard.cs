@@ -440,7 +440,7 @@ public partial class Dashboard : Control
 
         // Card 6b: 👁 Pandangan NPC (default kamera mata; opsi: input sensorik asli ke otak)
         eyeView = new NpcEyeView();
-        var cardEye = CreateBentoCard("👁 PANDANGAN NPC", new Color(0.65f, 0.55f, 0.98f), out var eyeBox, eyeView.ModeSelect);
+        var cardEye = CreateBentoCard("👁 PANDANGAN NPC", new Color(0.65f, 0.55f, 0.98f), out var eyeBox);
         cardEye.SizeFlagsVertical = SizeFlags.ExpandFill;
         cardEye.SizeFlagsStretchRatio = 0.75f;
         eyeBox.AddChild(eyeView);

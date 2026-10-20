@@ -226,6 +226,19 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
 - **Verifikasi**: ulang uji yang sama di Makan vs Racun dan Hutan Navigasi: kontak dinding turun dari ~1800-1950 menjadi 0 (maks 33/3000 pada Kucing FSM); jarak tempuh Otak naik. `dotnet build` 0/0, `dotnet test` 9/9, smoke benchmark `--bench=brain --n=10 --duration=20` selesai.
 - **Catatan**: refleks baru mengubah metrik jarak tempuh dibanding data benchmark lama; jalankan ulang benchmark penuh sebelum membandingkan dengan hasil sebelum 2026-10-20.
 
+### [2026-10-20] - Antigravity (Gemini) (#11: perbaikan sisi kanan terpotong pada Bento Grid)
+- **Akar Masalah Sisi Kanan Terpotong**:
+  - Pada kartu "👁 PANDANGAN NPC" (`cardEye`), dropdown `ModeSelect` (berisi "📷 Kamera NPC", "🧠 Input Otak", "🔬 Retina (sektor)") dimasukkan sebagai `headerExtra` berdampingan dengan label judul kartu dalam satu `HBoxContainer`.
+  - Kombinasi judul + dropdown membutuhkan lebar minimum **309 px** (+ padding kartu = **325 px**).
+  - Karena kolom kanan (`right_wrap`) dipatok pada lebar **270 px** dengan `ClipContents = true`, maka kelebihan lebar **55 px** di sisi kanan (termasuk garis batas kanan kartu, slider, dan tombol dropdown) terpotong/ter-klip.
+- **Solusi**:
+  1. [`scripts/UI/NpcEyeView.cs`](scripts/UI/NpcEyeView.cs): Memindahkan dropdown `ModeSelect` ke dalam bodi kartu `NpcEyeView` (di atas stack tampilan sensor/kamera), bukan di baris header. Lebar minimum kartu langsung turun dari 325 px menjadi **172 px**.
+  2. [`scripts/UI/Dashboard.cs`](scripts/UI/Dashboard.cs): Memanggil `CreateBentoCard("👁 PANDANGAN NPC")` tanpa `headerExtra` sehingga judul tampil bersih di header dan dropdown berada rapi di bawahnya memanfaatkan lebar penuh kartu.
+- **Verifikasi**:
+  - `col_right.size.x` turun dari 325.0 px menjadi **270.0 px** (sama persis dengan `right_wrap`).
+  - Uji runtime memverifikasi `col_right.size.x > right_wrap.size.x` = `false` (0 px terpotong, semua border dan tombol tampil utuh 100%).
+  - `dotnet build` 0 warning / 0 error; `dotnet test` 11/11 lulus 100%; tangkapan layar runtime diperbarui di `reports/screenshots/bento_dashboard.png`.
+
 ### [2026-10-20] - Antigravity (Gemini) (#10: eliminasi getaran/jittering grid Bento dari panjang data)
 - **Akar Masalah Getaran (Jittering)**:
   1. *Horizontal*: Penambahan dropdown "Otak·retina" pada baris spawner membuat `row1` melebar (329px > 245px). Ketiadaan wrapper kolom pembatas membuat sinyal `minimum_size_changed` merambat langsung ke `mainGrid` (`HBoxContainer`), sehingga lebar kolom kiri/kanan dan lebar viewport 3D di tengah berfluktuasi saat teks angka berubah.
@@ -251,6 +264,7 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
 - **Temuan untuk laporan**: (1) ancaman dari belakang (|arah| > 1,2 rad) nyaris tidak terdeteksi pada peta proksi soma (titik buta; bisa artefak proksi, bukan fakta anatomi); (2) ancaman kecil/jauh lebih lemah daripada besar (integrasi spasial), sedangkan skalar tak peka ukuran; (3) uji dalam game 12 rusa/kucing dikejar pemain 50 s: kabur per NPC skalar 8,4 vs retina 5,0.
 - **Perbaikan sampingan**: `statsLabel` dan `inspectLabel` di Dashboard memakai `ClipText = true` + autowrap sehingga teksnya tak tampil sama sekali (dari commit a3df363); `ClipText` dinonaktifkan pada keduanya.
 - **Verifikasi**: `dotnet build` 0/0; `dotnet test` 11/11 (2 uji baru: partisi peta retina + arah kabur skalar vs retina); smoke benchmark `--bench=brain --vision=retina --n=10 --duration=30`; tangkapan layar kartu Retina.
+- **Tambahan (laporan pengguna: tak ada NPC retina)**: dropdown spawn default "Otak" = skalar, jadi kartu Retina kosong. Kartu Pandangan NPC kini punya kotak centang "Retina untuk NPC ini" yang mengubah `Vision` NPC Otak terpilih secara langsung (tanpa spawn ulang); pesan di mode Retina menunjuk ke kotak itu. Diuji: toggle -> `LoomBins` terisi dan panel sektor tampil.
 - **Berikutnya**: jalankan benchmark penuh `--retina` untuk perbandingan statistik; pertimbangkan okulusi raycast dan validasi peta dengan koordinat dendrit bila tersedia.
 
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
