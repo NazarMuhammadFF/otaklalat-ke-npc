@@ -12,6 +12,8 @@ public partial class AiManager : Node
     [Export] public bool LodEnabled = true;
     [Export] public float LodNear = 25f, LodFar = 50f;
     [Export] public bool Parallel = true;
+    /// <summary>NPC yang sedang diinspeksi: selalu disimulasikan penuh (tanpa LOD) agar panel saraf tetap real-time dari sudut pandang mana pun.</summary>
+    public NpcBase FocusNpc;
 
     /// <summary>Waktu dinding fase keputusan (ms) pada tick terakhir.</summary>
     public float LastDecideWallMs { get; private set; }
@@ -29,7 +31,7 @@ public partial class AiManager : Node
         {
             n.Sense(dt);
             n.BrainTimeScale = 1f;
-            if (LodEnabled && cam != null)
+            if (LodEnabled && cam != null && n != FocusNpc)
             {
                 float d = cam.GlobalPosition.DistanceTo(n.GlobalPosition);
                 n.BrainTimeScale = d < LodNear ? 1f : d < LodFar ? 0.5f : 0.25f;

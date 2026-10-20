@@ -33,6 +33,7 @@ public partial class Dashboard : Control
     readonly List<Label> sliderValLabels = new();
     SpikeRaster raster;
     BrainView3D brain3D;
+    NpcEyeView eyeView;
     PanelContainer cardVp, cardRaster;
     Button brainFocusBtn;
     NpcBase selected;
@@ -181,16 +182,16 @@ public partial class Dashboard : Control
         var spacer = new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill };
         topRow.AddChild(spacer);
 
-        // Status Performa
-        fpsLabel = new Label { Text = "FPS: 60" };
+        // Status Performa (dengan lebar minimum & clip agar tidak menggeser topRow saat digit berubah)
+        fpsLabel = new Label { Text = "FPS: 60", CustomMinimumSize = new Vector2(58, 0), ClipText = true };
         fpsLabel.AddThemeColorOverride("font_color", new Color(0.4f, 0.9f, 0.6f));
         topRow.AddChild(fpsLabel);
 
-        tickLabel = new Label { Text = "Tick: 0.0ms" };
+        tickLabel = new Label { Text = "Tick: 0.00ms", CustomMinimumSize = new Vector2(85, 0), ClipText = true };
         tickLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.8f, 0.4f));
         topRow.AddChild(tickLabel);
 
-        lodLabel = new Label { Text = "LOD: ON" };
+        lodLabel = new Label { Text = "LOD: ON", CustomMinimumSize = new Vector2(58, 0), ClipText = true };
         lodLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.8f, 1f));
         topRow.AddChild(lodLabel);
 
@@ -209,6 +210,7 @@ public partial class Dashboard : Control
         var col = new VBoxContainer
         {
             CustomMinimumSize = new Vector2(245, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         col.AddThemeConstantOverride("separation", 6);
@@ -261,7 +263,11 @@ public partial class Dashboard : Control
         // Card 3: 📊 Skor Komparatif Real-Time
         var cardStats = CreateBentoCard("📊 SKOR KOMPARATIF REAL-TIME", new Color(0.51f, 0.55f, 0.97f), out var statsBox);
         cardStats.SizeFlagsVertical = SizeFlags.ExpandFill;
-        statsLabel = new Label();
+        statsLabel = new Label
+        {
+            ClipText = true,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
         statsLabel.AddThemeFontSizeOverride("font_size", 11);
         statsLabel.AddThemeColorOverride("font_color", new Color(0.92f, 0.95f, 1f));
         statsBox.AddChild(statsLabel);
@@ -392,6 +398,7 @@ public partial class Dashboard : Control
         var col = new VBoxContainer
         {
             CustomMinimumSize = new Vector2(265, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         col.AddThemeConstantOverride("separation", 6);
@@ -404,11 +411,20 @@ public partial class Dashboard : Control
         {
             Text = "Klik hewan di dalam frame simulasi 3D untuk menginspeksi aktivitas sirkuit saraf dan motorik.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
+            ClipText = true,
         };
         inspectLabel.AddThemeFontSizeOverride("font_size", 11);
         inspectLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.92f, 0.98f));
         inspectBox.AddChild(inspectLabel);
         col.AddChild(cardInspect);
+
+        // Card 6b: 👁 Pandangan NPC (default kamera mata; opsi: input sensorik asli ke otak)
+        eyeView = new NpcEyeView();
+        var cardEye = CreateBentoCard("👁 PANDANGAN NPC", new Color(0.65f, 0.55f, 0.98f), out var eyeBox, eyeView.ModeSelect);
+        cardEye.SizeFlagsVertical = SizeFlags.ExpandFill;
+        cardEye.SizeFlagsStretchRatio = 0.8f;
+        eyeBox.AddChild(eyeView);
+        col.AddChild(cardEye);
 
         // Card 7: 🧬 6 Knob Sifat Biologis (Live Modulasi)
         var cardTraits = CreateBentoCard("🧬 6 KNOB SIFAT (LIVE)", new Color(0.96f, 0.62f, 0.04f), out var traitBox);
@@ -490,6 +506,7 @@ public partial class Dashboard : Control
         currentMap = scene.Instantiate<MapBase>();
         currentMap.SuppressOverlay = true; // Jangan buat HUD lama
         subViewport.AddChild(currentMap);
+        eyeView.ShareWorld(subViewport);
 
         mapTitleLabel.Text = $"Map: {currentMap.MapTitle}";
         humanOdorCheck.SetPressedNoSignal(true);
@@ -562,8 +579,9 @@ public partial class Dashboard : Control
             {
                 Select(npc);
             }
-            else
+            else if (currentMap.PlayerNode.Mode != Player.CamMode.FirstPerson)
             {
+                // di mode manusia (F1) klik kosong hanya untuk fokus/menoleh; NPC terpilih dan panelnya tetap berjalan
                 Select(null);
             }
         }
@@ -664,7 +682,9 @@ public partial class Dashboard : Control
     {
         if (selected is BrainNpc old) old.Brain.CaptureCounts = null;
         brain3D.Bind(null);
+        eyeView.Bind(n);
         selected = n;
+        if (currentMap?.Ai != null) currentMap.Ai.FocusNpc = n;
         if (currentMap?.PlayerNode != null && n != null) currentMap.PlayerNode.FollowTarget = n;
 
         if (n == null)
@@ -721,7 +741,7 @@ public partial class Dashboard : Control
                 DirAccess.MakeDirAbsolute("reports/screenshots");
                 img.SavePng("reports/screenshots/bento_dashboard.png");
             }
-            else if (k.Keycode == Key.Escape) Select(null);
+            else if (k.Keycode == Key.Escape && currentMap?.PlayerNode?.Mode != Player.CamMode.FirstPerson) Select(null);   // di mode manusia Esc tidak membatalkan pilihan (panel tetap hidup); pakai tombol Batal
         }
     }
 

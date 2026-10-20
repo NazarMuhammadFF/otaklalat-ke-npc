@@ -223,6 +223,7 @@ public partial class BrainView3D : Control
         var sidePanel = new PanelContainer
         {
             CustomMinimumSize = new Vector2(178, 0),
+            SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
         };
         var sideStyle = new StyleBoxFlat
@@ -278,7 +279,7 @@ public partial class BrainView3D : Control
 
         modeBadgeLabel = new Label
         {
-            Text = "● MODE: SPONTANEOUS CONNECTOME",
+            Text = "● MODE: NO NPC SELECTED (IDLE)",
             ClipText = true,
         };
         modeBadgeLabel.AddThemeFontSizeOverride("font_size", 8);
@@ -296,7 +297,6 @@ public partial class BrainView3D : Control
             if (connectome != null && builtN != connectome.N)
             {
                 BuildConnectomeGeometry(connectome);
-                SeedInitialActivity();
                 UpdateVisualBuffers(0.016f, false, null);
                 UpdateSidebarText();
             }
@@ -1037,79 +1037,15 @@ void fragment() {
             connectome = b.State.C;
             if (builtN != connectome.N) BuildConnectomeGeometry(connectome);
             lastSteps = b.State.TotalSteps;
+            if (act != null) Array.Clear(act);
             modeBadgeLabel.Text = "● MODE: LIVE NPC CONNECTOME";
             modeBadgeLabel.AddThemeColorOverride("font_color", new Color(0.28f, 1.0f, 0.58f));
         }
         else
         {
-            modeBadgeLabel.Text = "● MODE: SPONTANEOUS CONNECTOME";
+            if (act != null) Array.Clear(act);
+            modeBadgeLabel.Text = "● MODE: NO NPC SELECTED (IDLE)";
             modeBadgeLabel.AddThemeColorOverride("font_color", new Color(0.42f, 0.86f, 1.0f));
-        }
-    }
-
-    void SeedInitialActivity()
-    {
-        if (act == null) return;
-        var rng = new RandomNumberGenerator { Seed = 20261019UL };
-        for (int i = 0; i < act.Length; i++)
-        {
-            int r = regionOf[i];
-            float p = r switch
-            {
-                1 => 0.68f, // Central complex (compass): ~249/367
-                0 => 0.16f, // Mata/Lobula (visual): ~51/314
-                2 => 0.22f, // Mushroom body (memori)
-                3 => 0.42f, // Lobus antena (bau)
-                4 => 0.26f, // Pengecap (SEZ)
-                5 => 0.08f, // Motor (descending): ~1/14
-                _ => 0.15f,
-            };
-            act[i] = rng.Randf() < p ? rng.RandfRange(0.35f, 0.98f) : rng.RandfRange(0.0f, 0.16f);
-        }
-    }
-
-    void StepSpontaneousActivity(float dt)
-    {
-        simTime += dt;
-        float compassPhase = simTime * 1.6f;
-        float visualWave = Mathf.Sin(simTime * 2.1f);
-        uint frameHash = (uint)(simTime * 60f) * 747796405u + 2891336453u;
-
-        for (int i = 0; i < act.Length; i++)
-        {
-            int r = regionOf[i];
-            uint h = (uint)i * 2654435761u ^ frameHash;
-            float rand01 = (h & 0xFFFFu) / 65535f;
-
-            if (r == 1)
-            {
-                float ang = Mathf.Atan2(pos[i].Y - 0.04f, pos[i].X);
-                float diff = Mathf.Cos(ang - compassPhase);
-                if (diff > -0.35f && rand01 < 0.25f)
-                    act[i] = Mathf.Max(act[i], 0.48f + 0.50f * Mathf.Max(0f, diff));
-            }
-            else if (r == 0)
-            {
-                bool activeSide = (pos[i].X > 0 && visualWave >= -0.25f) || (pos[i].X < 0 && visualWave <= 0.25f);
-                if (activeSide && rand01 < 0.036f)
-                    act[i] = 0.95f;
-            }
-            else if (r == 5)
-            {
-                if (rand01 < 0.012f) act[i] = 0.95f;
-            }
-            else if (r == 2)
-            {
-                if (rand01 < 0.035f) act[i] = 0.5f + 0.5f * ((h & 0xFFu) / 255f);
-            }
-            else if (r == 3 || r == 4)
-            {
-                if (rand01 < 0.045f) act[i] = 0.9f;
-            }
-            else
-            {
-                if (rand01 < 0.022f) act[i] = 0.85f;
-            }
         }
     }
 
@@ -1143,6 +1079,7 @@ void fragment() {
     {
         if (!IsVisibleInTree() || mmNeurons == null) return;
         float dt = Mathf.Min((float)delta, 0.05f);
+        simTime += dt;
 
         if (autoRotate)
         {
@@ -1161,10 +1098,6 @@ void fragment() {
             counts = boundBrain.CaptureCounts;
             fresh = steps != lastSteps && counts != null;
             lastSteps = steps;
-        }
-        else
-        {
-            StepSpontaneousActivity(dt);
         }
 
         UpdateVisualBuffers(dt, fresh, counts);

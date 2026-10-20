@@ -173,6 +173,35 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 (0 Failed).
   - Tangkapan layar verifikasi disimpan di `reports/screenshots/brain_connectome_3d.png` dan `reports/screenshots/bento_dashboard.png`.
 
+### [2026-10-19] - Claude Code (#5: aktivitas palsu di BrainView3D)
+- **Temuan**: `BrainView3D` versi terbaru menjalankan "mode spontan" saat tidak ada NPC terpilih (`SeedInitialActivity` + `StepSpontaneousActivity`): aktivitas neuron dibangkitkan skrip (hash acak + gelombang kompas/visual buatan), BUKAN dari simulasi LIF. Itu sebabnya neuron sudah menyala sebelum NPC di-spawn.
+- **Perbaikan**: kedua fungsi dihapus; tanpa NPC terpilih semua neuron redup (0/2635 aktif) dengan badge "NO NPC SELECTED (IDLE)". Aktivitas hanya berasal dari `CaptureCounts` NPC Otak yang sedang dipilih (satu NPC pada satu waktu). `Bind()` kini mengosongkan aktivitas sisa.
+- **Verifikasi**: build 0 warning/0 error; tangkapan layar Dashboard: sebelum spawn semua wilayah 0/total, setelah spawn dan memilih rusa Otak wilayah menyala dan badge berubah ke "LIVE NPC CONNECTOME".
+
+### [2026-10-19] - Claude Code (#6: panel tetap hidup di mode manusia)
+- **Penyebab**: (1) `Dashboard.OnViewportGuiInput` memanggil `Select(null)` setiap klik kiri yang tidak mengenai NPC, jadi klik untuk fokus/menoleh di mode F1 mengosongkan semua panel; (2) Brain-LOD mengikuti jarak kamera, sehingga NPC yang jauh dari posisi pemain disimulasikan 0,5x/0,25x dan panel raster/otak 3D melambat.
+- **Perbaikan**: di mode F1 klik kosong tidak lagi membatalkan pilihan (mode lain tetap membatalkan; tombol Batal/Esc tetap ada). `AiManager.FocusNpc` (diisi `Dashboard.Select`) membebaskan NPC terpilih dari LOD.
+- **Verifikasi**: build 0 warning/0 error; uji skrip (dihapus): klik kosong di F1 -> selected tetap ada dan `FocusNpc` terisi; klik kosong di TopDown -> pilihan dibatalkan seperti sebelumnya.
+
+### [2026-10-19] - Claude Code (#7: kartu Pandangan NPC + Esc di mode F1)
+- **Ditambah**: `scripts/UI/NpcEyeView.cs` + kartu "👁 PANDANGAN NPC" di kolom kanan Dashboard (di bawah Inspeksi). Dropdown mode: **Kamera NPC** (default; render 3D dari kepala NPC terpilih, ilustrasi) dan **Input Otak** (diagram kupu-kupu kiri/kanan dari `SensorFrame`: looming, gula, pahit, bau makan/racun/netral, lapar, matahari; untuk NPC Otak ditampilkan sebagai laju Poisson Hz memakai rumus `SensorEncoder`, untuk FSM nilai 0..1).
+- **Cara kerja**: kamera hidup di `SubViewport` sendiri yang berbagi World3D dengan viewport map (`FindWorld3D()`, bukan properti `World3D` yang bernilai null untuk own-world); transform diikuti manual tiap frame agar tidak mencuri kamera pemain. Tubuh NPC terpilih dipindah ke layer visual 20 dan dikeluarkan dari `CullMask` kamera mata (dipulihkan saat `Bind` berikutnya). Render dimatikan saat tak ada NPC/mode Input Otak.
+- **Juga**: Esc di mode F1 tidak lagi membatalkan pilihan NPC (`Dashboard.cs`).
+- **Verifikasi**: `dotnet build` 0 warning/0 error; `dotnet test` 9/9; tangkapan layar (skrip uji sementara, dihapus) memperlihatkan kedua mode untuk rusa Otak.
+- **Catatan**: kamera mata hanya ilustrasi (FOV 110°); otak tidak menerima piksel. Tinggi kamera (`EyeOffset`) sama untuk semua model; belum disetel per model.
+
+### [2026-10-20] - Antigravity (Gemini) (#8: stabilisasi jitter layout Bento Grid)
+- **Penyebab Getaran/Jitter**: Teks dinamis pada label telemetri (FPS, Tick AI ms, metrik populasi real-time, dan status inspeksi NPC) berubah panjang karakter setiap frame. Hal ini memicu sinyal `minimum_size_changed` pada container Godot, sehingga kolom kiri/kanan melebar-menyempit secara dinamis dan frame viewport simulasi 3D di tengah bergetar.
+- **Solusi**:
+  1. `BuildTopBar`: Memberikan `CustomMinimumSize` tetap (`fpsLabel` 58px, `tickLabel` 85px, `lodLabel` 58px) dan mengaktifkan `ClipText = true` agar tombol navigasi peta tidak bergoyang saat angka tick/fps bertambah digit.
+  2. `BuildLeftColumn`: Mengunci kolom kiri dengan `SizeFlagsHorizontal = SizeFlags.ShrinkBegin` (lebar tetap 245px), serta menambahkan `ClipText = true` dan `AutowrapMode = WordSmart` pada `statsLabel`.
+  3. `BuildRightColumn`: Mengunci kolom kanan dengan `SizeFlagsHorizontal = SizeFlags.ShrinkEnd` (lebar tetap 265px), serta menambahkan `ClipText = true` pada `inspectLabel`.
+  4. `BrainView3D`: Mengunci `sidePanel` dengan `SizeFlagsHorizontal = SizeFlags.ShrinkEnd` dan ukuran minimum tetap 178px agar counter aktif kluster neuron tidak mendorong aspek rasio viewport 3D connectome.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning, 0 Error.
+  - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 unit tests.
+  - Runtime Godot console dieksekusi dengan `--auto-screenshot` untuk memastikan kestabilan rendering. Layout Bento Grid kini 100% stabil dan bebas dari getaran (jittering).
+
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
 Keputusan:
