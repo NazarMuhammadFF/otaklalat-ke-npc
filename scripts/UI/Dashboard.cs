@@ -252,7 +252,7 @@ public partial class Dashboard : Control
         humanBox.AddChild(humanOdorCheck);
         var humanHint = new Label
         {
-            Text = "F1: sudut pandang manusia. Shift = lari; menyentuh NPC saat lari = nyeri (NPC belajar menghindari bau Anda). NPC tidak diberi label 'manusia'.",
+            Text = "F1: sudut pandang manusia (WASD: jalan, Panah: kamera). Shift = lari; menyentuh NPC saat lari = nyeri (NPC belajar hindari bau Anda).",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         humanHint.AddThemeFontSizeOverride("font_size", 9);
@@ -278,7 +278,7 @@ public partial class Dashboard : Control
         helpPill.AddThemeStyleboxOverride("panel", CreateCardStyle(new Color(0.2f, 0.3f, 0.4f, 0.4f), new Color(0.04f, 0.06f, 0.09f, 0.8f), 6));
         var helpLbl = new Label
         {
-            Text = "💡 WASD: Gerak | Scroll: Zoom | F: Makanan\n[Ctrl+1..4] Ganti Map | [Tab] Label",
+            Text = "💡 WASD: Gerak | ◄▲▼►: Kamera | Scroll: Zoom\n[F] Makanan | [Ctrl+1..4] Map | [Tab] Label",
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         helpLbl.AddThemeFontSizeOverride("font_size", 9);
@@ -460,6 +460,7 @@ public partial class Dashboard : Control
                 Step = 0.05,
                 CustomMinimumSize = new Vector2(0, 14),
                 Editable = false,
+                FocusMode = FocusModeEnum.None,
             };
             s.ValueChanged += v =>
             {

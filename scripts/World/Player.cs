@@ -14,6 +14,7 @@ public partial class Player : CharacterBody3D, ILooming
     public enum CamMode { FirstPerson, TopDown, FollowNpc }
 
     [Export] public float Speed = 5f, SprintSpeed = 11f, MouseSensitivity = 0.003f;
+    [Export] public float KeyLookSpeed = 2.0f; // Kecepatan rotasi kamera keyboard arah (rad/detik)
     public Camera3D Camera { get; private set; }
     public CamMode Mode { get; private set; } = CamMode.TopDown;
     public NpcBase FollowTarget { get; set; }
@@ -29,6 +30,7 @@ public partial class Player : CharacterBody3D, ILooming
     Vector3 topDownFocus = new(0, 0, 2f);
     float topDownHeight = 25f, topDownYaw = 0f, topDownPitch = -1.05f;
     float fpPitch = 0f;
+    float followYaw = 0f, followPitch = 0f;
 
     public override void _EnterTree() => WorldRegistry.Loomers.Add(this);
     public override void _ExitTree() => WorldRegistry.Loomers.Remove(this);
@@ -56,10 +58,15 @@ public partial class Player : CharacterBody3D, ILooming
     {
         Mode = newMode;
         if (target != null) FollowTarget = target;
-        if (Mode == CamMode.FollowNpc && (FollowTarget == null || !IsInstanceValid(FollowTarget)))
+        if (Mode == CamMode.FollowNpc)
         {
-            if (NpcBase.All.Count > 0) FollowTarget = NpcBase.All[0];
-            else Mode = CamMode.TopDown;
+            followYaw = 0f;
+            followPitch = 0f;
+            if (FollowTarget == null || !IsInstanceValid(FollowTarget))
+            {
+                if (NpcBase.All.Count > 0) FollowTarget = NpcBase.All[0];
+                else Mode = CamMode.TopDown;
+            }
         }
         if (bodyVisual != null) bodyVisual.Visible = Mode != CamMode.FirstPerson;
         if (Mode == CamMode.FirstPerson)
@@ -106,10 +113,15 @@ public partial class Player : CharacterBody3D, ILooming
                 fpPitch = Mathf.Clamp(fpPitch - m.Relative.Y * MouseSensitivity, -1.4f, 1.4f);
                 Camera.Rotation = new Vector3(fpPitch, 0, 0);
             }
-            else
+            else if (Mode == CamMode.TopDown)
             {
                 topDownYaw -= m.Relative.X * MouseSensitivity;
                 topDownPitch = Mathf.Clamp(topDownPitch - m.Relative.Y * MouseSensitivity, -1.48f, -0.35f);
+            }
+            else if (Mode == CamMode.FollowNpc)
+            {
+                followYaw -= m.Relative.X * MouseSensitivity;
+                followPitch = Mathf.Clamp(followPitch + m.Relative.Y * MouseSensitivity, -0.6f, 1.2f);
             }
         }
     }
@@ -123,8 +135,25 @@ public partial class Player : CharacterBody3D, ILooming
         if (Input.IsKeyPressed(Key.A)) input.X -= 1;
         if (Input.IsKeyPressed(Key.D)) input.X += 1;
 
+        // Kontrol rotasi kamera via Keyboard Arah (Arrow Keys)
+        var camInput = Vector2.Zero;
+        if (Input.IsKeyPressed(Key.Left)) camInput.X -= 1;
+        if (Input.IsKeyPressed(Key.Right)) camInput.X += 1;
+        if (Input.IsKeyPressed(Key.Up)) camInput.Y -= 1;
+        if (Input.IsKeyPressed(Key.Down)) camInput.Y += 1;
+
+        float rotSpeed = (Input.IsKeyPressed(Key.Shift) ? KeyLookSpeed * 1.6f : KeyLookSpeed) * dt;
+
         if (Mode == CamMode.FirstPerson)
         {
+            // Rotasi kamera FPS: Panah Kiri/Kanan = Putar Badan (Yaw), Panah Atas/Bawah = Angguk Kepala (Pitch)
+            if (camInput.X != 0) RotateY(-camInput.X * rotSpeed);
+            if (camInput.Y != 0)
+            {
+                fpPitch = Mathf.Clamp(fpPitch - camInput.Y * rotSpeed, -1.4f, 1.4f);
+                Camera.Rotation = new Vector3(fpPitch, 0, 0);
+            }
+
             float speed = Input.IsKeyPressed(Key.Shift) ? SprintSpeed : Speed;
             var dir = (GlobalBasis * new Vector3(input.X, 0, input.Y)).Normalized() * speed;
             var v = Velocity;
@@ -143,6 +172,17 @@ public partial class Player : CharacterBody3D, ILooming
             topDownFocus.X = Mathf.Clamp(topDownFocus.X + pan.X, -Arena.HalfSize, Arena.HalfSize);
             topDownFocus.Z = Mathf.Clamp(topDownFocus.Z + pan.Z, -Arena.HalfSize, Arena.HalfSize);
 
+            // Rotasi sudut pandang Bird's-Eye: Panah Kiri/Kanan = Orbit Yaw, Panah Atas/Bawah = Sudut Pitch
+            if (camInput.X != 0) topDownYaw -= camInput.X * rotSpeed;
+            if (camInput.Y != 0)
+                topDownPitch = Mathf.Clamp(topDownPitch - camInput.Y * rotSpeed, -1.48f, -0.35f);
+
+            // Zoom alternatif via Keyboard (+/- atau PageUp/PageDown)
+            if (Input.IsKeyPressed(Key.Pageup) || Input.IsKeyPressed(Key.Equal) || Input.IsKeyPressed(Key.KpAdd))
+                topDownHeight = Mathf.Clamp(topDownHeight - 16f * dt, 7f, 45f);
+            else if (Input.IsKeyPressed(Key.Pagedown) || Input.IsKeyPressed(Key.Minus) || Input.IsKeyPressed(Key.KpSubtract))
+                topDownHeight = Mathf.Clamp(topDownHeight + 16f * dt, 7f, 45f);
+
             float horizDist = topDownHeight / Mathf.Tan(-topDownPitch);
             var offset = yawBasis * new Vector3(0, topDownHeight, horizDist);
             Camera.GlobalPosition = topDownFocus + offset;
@@ -156,9 +196,16 @@ public partial class Player : CharacterBody3D, ILooming
                 SetCameraMode(CamMode.TopDown);
                 return;
             }
+
+            // Orbit mengelilingi hewan yang diikuti: Panah Kiri/Kanan = Orbit, Panah Atas/Bawah = Elevasi
+            if (camInput.X != 0) followYaw -= camInput.X * rotSpeed;
+            if (camInput.Y != 0) followPitch = Mathf.Clamp(followPitch - camInput.Y * rotSpeed, -0.6f, 1.2f);
+
             var targetPos = FollowTarget.GlobalPosition + new Vector3(0, 1.1f, 0);
-            var back = FollowTarget.GlobalBasis.Z;
-            var desiredPos = targetPos + back * 4.8f + new Vector3(0, 2.8f, 0);
+            var orbitRot = Basis.FromEuler(new Vector3(0, followYaw, 0));
+            var back = orbitRot * FollowTarget.GlobalBasis.Z;
+            float desiredHeight = 2.8f + followPitch * 2.2f;
+            var desiredPos = targetPos + back * 4.8f + new Vector3(0, desiredHeight, 0);
             Camera.GlobalPosition = Camera.GlobalPosition.Lerp(desiredPos, Mathf.Clamp(dt * 8f, 0f, 1f));
             Camera.LookAt(targetPos, Vector3.Up);
         }

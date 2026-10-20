@@ -24,6 +24,8 @@ public abstract partial class MapBase : Node3D
     public abstract string MapTitle { get; }
     public virtual MapStats Stats => MapStats.None;
     protected virtual bool UseDrone => false;
+    /// <summary>Pohon dari <see cref="SpawnProp"/> diberi collider batang (Arena benchmark menonaktifkan agar hasil lama tetap sebanding).</summary>
+    protected virtual bool PropCollision => true;
     protected virtual Color FloorColor => new(0.35f, 0.55f, 0.3f);
     protected virtual Vector3 PlayerStart => new(0, 0.5f, HalfSize - 3);
 
@@ -142,6 +144,13 @@ public abstract partial class MapBase : Node3D
         node.Scale = new Vector3(scale, scale, scale);
         node.RotationDegrees = new Vector3(0, rotYDeg, 0);
         AddChild(node);
+        if (PropCollision && path.Contains("Tree_"))
+        {
+            var trunk = new StaticBody3D { Position = new Vector3(pos.X, 1f, pos.Z) };
+            trunk.AddChild(new CollisionShape3D { Shape = new CylinderShape3D { Radius = 0.35f, Height = 2f } });
+            AddChild(trunk);
+            Obstacles.Add(new Vector3(pos.X, 0f, pos.Z));
+        }
     }
 
     protected void AddZoneSign(Vector3 pos, string text, Color color)

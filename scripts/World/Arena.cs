@@ -15,6 +15,7 @@ public partial class Arena : MapBase
     public override string MapTitle => "Arena Gabungan (benchmark)";
     public override MapStats Stats => MapStats.Food | MapStats.Poison | MapStats.Escape | MapStats.Danger;
     protected override bool UseDrone => true;
+    protected override bool PropCollision => false;
 
     protected override bool TryStartBenchmark(System.Collections.Generic.Dictionary<string, string> args)
     {

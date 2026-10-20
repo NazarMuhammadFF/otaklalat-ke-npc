@@ -202,6 +202,30 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
   - `dotnet test tests/BrainTests -c Release` -> Passed 9/9 unit tests.
   - Runtime Godot console dieksekusi dengan `--auto-screenshot` untuk memastikan kestabilan rendering. Layout Bento Grid kini 100% stabil dan bebas dari getaran (jittering).
 
+### [2026-10-20] - Antigravity (Gemini) (#9: Kontrol Kamera via Keyboard Arah / Arrow Keys)
+- **Konteks & Kebutuhan**: Kontrol navigasi pemain/penguji menggunakan WASD untuk gerak fisik (jalan/lari di F1, pan di F2). Pengguna membutuhkan kontrol rotasi kamera langsung lewat keyboard arah (panah ◄▲▼►) agar tangan kiri (WASD) dan tangan kanan (Panah) dapat mengontrol gerak dan sudut pandang kamera secara serentak tanpa wajib memakai mouse.
+- **Implementasi**:
+  1. [scripts/World/Player.cs](scripts/World/Player.cs):
+     - Menambahkan parameter KeyLookSpeed = 2.0f rad/detik (dengan akselerasi 1.6x saat menahan Shift).
+     - CamMode.FirstPerson (F1): Panah Kiri/Kanan memutar orientasi tubuh pemain (Yaw), Panah Atas/Bawah mengatur anggukan kepala (Pitch, clamped -1.4 s.d. +1.4 rad).
+     - CamMode.TopDown (F2): Panah Kiri/Kanan mengorbit 	opDownYaw mengelilingi titik fokus arena; Panah Atas/Bawah menyesuaikan kemiringan sudut pandang (	opDownPitch). Juga ditambahkan zoom keyboard opsional (+/- atau PageUp/PageDown).
+     - CamMode.FollowNpc (F3): Panah Kiri/Kanan mengorbit mengelilingi hewan yang sedang diamati (ollowYaw); Panah Atas/Bawah menyesuaikan elevasi ketinggian kamera (ollowPitch).
+     - Klik kanan drag mouse tetap berfungsi harmonis berdampingan.
+  2. [scripts/UI/Dashboard.cs](scripts/UI/Dashboard.cs):
+     - Memasang FocusMode = FocusModeEnum.None pada seluruh HSlider knob sifat biologis agar interaksi slider tidak 'mencuri' fokus tombol keyboard arah.
+     - Memperbarui label instruksi cepat pada card panduan menjadi 💡 WASD: Gerak | ◄▲▼►: Kamera | Scroll: Zoom.
+- **Verifikasi**:
+  - dotnet build otakLalat-npc.csproj -c Debug -> 0 Warning(s), 0 Error(s).
+  - dotnet test tests/BrainTests -c Release -> Passed 9/9 unit tests (100%).
+  - Uji runtime via Godot Mono Console (--auto-screenshot) sukses berjalan mulus.
+
+### [2026-10-20] - Claude Code (#8: NPC menempel ke dinding)
+- **Temuan**: uji 8 NPC x 3000 frame di map Makan vs Racun: 5 dari 8 NPC (Otak dan FSM) menempel/meluncur di dinding 40-65% frame. Penyebab: saat ketiga RayCast kena dinding, refleks memilih arah putar mengikuti `cmd.Turn` otak yang berubah-ubah, sedangkan kecepatan maju tetap penuh. Dinding/batu memang tidak terdaftar sebagai looming (dan tidak perlu: looming statis akan memicu Giant Fiber palsu).
+- **Perbaikan** (`NpcBase.Act`, refleks tubuh bersama Otak dan FSM): bila terhalang di depan, arah putar dipilih dari normal permukaan (menjauh dari dinding), dikunci 0,5 s (`AvoidHoldSec`) dan menimpa belok otak; kecepatan maju dikurangi (0,2x terhalang, 0,7x saat masih berputar). Ray samping tunggal tetap seperti semula. Tidak ada if-else baru di `BrainNpc`.
+- **Collider pohon**: `MapBase.SpawnProp` menambah collider batang (silinder r 0,35 m) untuk model `*Tree_*` bila `PropCollision` true; `Arena` (benchmark) menonaktifkannya agar hasil lama sebanding. Hutan Navigasi sudah punya collider sendiri.
+- **Verifikasi**: ulang uji yang sama di Makan vs Racun dan Hutan Navigasi: kontak dinding turun dari ~1800-1950 menjadi 0 (maks 33/3000 pada Kucing FSM); jarak tempuh Otak naik. `dotnet build` 0/0, `dotnet test` 9/9, smoke benchmark `--bench=brain --n=10 --duration=20` selesai.
+- **Catatan**: refleks baru mengubah metrik jarak tempuh dibanding data benchmark lama; jalankan ulang benchmark penuh sebelum membandingkan dengan hasil sebelum 2026-10-20.
+
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
 Keputusan:

@@ -24,6 +24,7 @@ public abstract partial class NpcBase : CharacterBody3D
     public static readonly List<NpcBase> All = new();
 
     public const float WalkSpeed = 2.2f, MaxTurnRate = 3f, Gravity = 9.8f;
+    const float AvoidHoldSec = 0.5f;
     const float LoomRefRadPerS = 0.3f, TouchRange = 1.0f, AntennaOffset = 0.45f, OdorThreshold = 0.05f;
 
     public float Hunger = 0.4f;
@@ -36,7 +37,7 @@ public abstract partial class NpcBase : CharacterBody3D
     public float DecideMs;           // waktu CPU Decide terakhir (profiling)
     public float BrainTimeScale = 1f;
 
-    float punishTimer, yawRate, pathTimer, simTime;
+    float punishTimer, yawRate, pathTimer, simTime, avoidTimer, avoidDir;
     bool wasEscaping, wasInDanger;
     Edible touching;
     readonly Dictionary<ILooming, float> lastTheta = new();
@@ -240,15 +241,40 @@ public abstract partial class NpcBase : CharacterBody3D
         simTime += dt;
         var cmd = Command;
         // refleks mekanosensorik tubuh (bukan otak): hindari dinding/rintangan
-        float reflex = 0f;
-        if (rayL.IsColliding()) reflex -= 1f;
-        if (rayR.IsColliding()) reflex += 1f;
-        if (reflex == 0f && rayC.IsColliding() || rayL.IsColliding() && rayR.IsColliding())
-            reflex = cmd.Turn >= 0 ? 1f : -1f;   // terhalang tepat di depan: putar ke arah yang sudah dituju
+        bool hitL = rayL.IsColliding(), hitR = rayR.IsColliding(), hitC = rayC.IsColliding();
+        bool front = hitC || (hitL && hitR);
+        if (front)
+        {
+            // terhalang di depan: putar MENJAUH dari dinding (sisi tempat normal permukaan berada) dan kunci arahnya
+            // sampai ray bebas, agar perintah belok otak yang berubah-ubah tidak membuat NPC meluncur di dinding
+            if (avoidTimer <= 0f)
+            {
+                var rc = hitC ? rayC : hitL ? rayL : rayR;
+                var nrm = rc.GetCollisionNormal(); nrm.Y = 0f;
+                float lean = nrm.Dot(Left);
+                avoidDir = Mathf.Abs(lean) > 0.05f ? Mathf.Sign(lean) : (cmd.Turn >= 0f ? 1f : -1f);
+            }
+            avoidTimer = AvoidHoldSec;
+        }
+        else avoidTimer -= dt;
 
-        yawRate = Mathf.Clamp(cmd.Turn + reflex, -1f, 1f) * MaxTurnRate * (cmd.Escape ? 1.5f : 1f);
+        float turn, forward = cmd.Forward;
+        if (avoidTimer > 0f)
+        {
+            turn = avoidDir;
+            forward *= front ? 0.2f : 0.7f;
+        }
+        else
+        {
+            float reflex = 0f;   // ray samping: menjauh dari sisi yang tersentuh
+            if (hitL) reflex -= 1f;
+            if (hitR) reflex += 1f;
+            turn = Mathf.Clamp(cmd.Turn + reflex, -1f, 1f);
+        }
+
+        yawRate = turn * MaxTurnRate * (cmd.Escape ? 1.5f : 1f);
         RotateY(yawRate * dt);
-        var v = Forward * cmd.Forward * WalkSpeed;
+        var v = Forward * forward * WalkSpeed;
         v.Y = IsOnFloor() ? 0f : Velocity.Y - Gravity * dt;
         Velocity = v;
         var before = GlobalPosition;
