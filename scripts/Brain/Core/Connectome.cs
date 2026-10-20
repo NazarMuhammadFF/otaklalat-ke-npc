@@ -17,6 +17,8 @@ public sealed class Connectome
     public string[] Types { get; private set; }
     public char[] Sides { get; private set; }
     public Dictionary<string, int[]> Groups { get; } = new();
+    /// <summary>Jumlah sektor retina (0 = peta retinotopik belum dimuat; lihat <see cref="Retina.LoadMap"/>).</summary>
+    public int RetinaSectors { get; internal set; }
 
     // --- plastisitas KC -> MBON (Plasticity) ---
     public int[] PlasticSlot { get; private set; }      // per entri CSR: indeks sinapsis plastik atau -1

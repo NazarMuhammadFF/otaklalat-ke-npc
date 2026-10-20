@@ -226,6 +226,33 @@ Aturan proyek: [`AGENTS.md`](AGENTS.md). Rencana: [`PLAN.md`](PLAN.md). Dokumen 
 - **Verifikasi**: ulang uji yang sama di Makan vs Racun dan Hutan Navigasi: kontak dinding turun dari ~1800-1950 menjadi 0 (maks 33/3000 pada Kucing FSM); jarak tempuh Otak naik. `dotnet build` 0/0, `dotnet test` 9/9, smoke benchmark `--bench=brain --n=10 --duration=20` selesai.
 - **Catatan**: refleks baru mengubah metrik jarak tempuh dibanding data benchmark lama; jalankan ulang benchmark penuh sebelum membandingkan dengan hasil sebelum 2026-10-20.
 
+### [2026-10-20] - Antigravity (Gemini) (#10: eliminasi getaran/jittering grid Bento dari panjang data)
+- **Akar Masalah Getaran (Jittering)**:
+  1. *Horizontal*: Penambahan dropdown "Otak·retina" pada baris spawner membuat `row1` melebar (329px > 245px). Ketiadaan wrapper kolom pembatas membuat sinyal `minimum_size_changed` merambat langsung ke `mainGrid` (`HBoxContainer`), sehingga lebar kolom kiri/kanan dan lebar viewport 3D di tengah berfluktuasi saat teks angka berubah.
+  2. *Vertikal*: Total tinggi minimum kartu di kolom kanan (`cardInspect` + `cardEye` + `cardTraits`) mencapai **713 px**, melebihi sisa tinggi vertikal monitor 720p (**667 px** setelah dikurangi top bar dan margin). Saat teks telemetri syaraf memanjang dan membungkus baris, kartu-kartu berebut ruang vertikal dan memicu getaran (*layout oscillation*).
+- **Perbaikan Tanpa Mempengaruhi Fitur**:
+  1. **Penguncian Lebar Kolom 100% Solid**: Membungkus kolom kiri dan kanan dengan container `Control` (`leftWrap` dan `rightWrap`) selebar **270 px** tetap dengan `ClipContents = true`. Apapun perubahan teks/angka di dalam kartu, lebar kolom kini terkunci secara matematis dan frame simulasi 3D di tengah dijamin tidak akan pernah bergeser/bergetar 1 piksel pun.
+  2. **Penataan Spawner Responsif**: Menyusun `cardSpawn` menjadi 3 baris teratur: Baris 1 (Tipe Hewan & Metode Dropdown dengan `FitToLongestItem = true`), Baris 2 (Tombol `+ Spawn` & `Hapus`), dan Baris 3 (Checkbox `Klik lantai spawn`). Seluruh fitur spawner tetap 100% utuh dan pas rapi dalam 270 px.
+  3. **Pengurangan Beban Vertikal Kolom Kanan**:
+     - `cardInspect`: Font 10 px, ukuran minimum tetap 105 px.
+     - `cardEye`: Ketinggian stack disetel 120 px (dari 150 px) dan `FitToLongestItem = true` pada dropdown mode pandangan ("Kamera NPC", "Input Otak", "Retina (sektor)").
+     - `cardTraits`: Ketinggian slider disetel 10 px, font 10 px, spasi baris 2 px.
+     - Hasil: Total tinggi minimum kolom kanan turun drastis dari **713 px** menjadi **515 px** (memberikan ruang lega 152 px di dalam resolusi 720p).
+  4. **Top Bar Header**: `tickLabel` diberi batas minimum 92 px (`ClipText = true`) agar format tick CPU tidak mendorong tombol navigasi peta.
+- **Verifikasi**:
+  - `dotnet build otakLalat-npc.csproj -c Debug` -> 0 Warning, 0 Error.
+  - `dotnet test tests/BrainTests -c Release` -> Passed 11/11 (100% lulus, termasuk uji retinotopik baru).
+  - Runtime diuji di 1280x720: Ukuran `ColLeft` (270 px), `ColCenter` (716 px), dan `ColRight` (270 px) stabil 100% tanpa ada getaran sama sekali saat data diperbarui setiap frame.
+
+### [2026-10-20] - Claude Code (#9: penglihatan retinotopik sebagai opsi pembanding)
+- **Data**: grup `in_loom_L/R` berisi seluruh LPLC2 (108/102) + LC4 (54/50). Anotasi FlyWire hanya punya posisi **soma** (`pos` == `soma`), bukan dendrit di lobula, jadi sektor retina memakai urutan soma sepanjang PC1 sebagai PROKSI azimut (ASUMSI, wajib ditulis di laporan). `tools/connectome/make_retina_map.py` menghasilkan `data/brain/retina_map.json` (8 sektor/mata, tiap sektor memuat LPLC2 dan LC4 seimbang; sektor 0 = dekat garis tengah = depan). Hasilnya identik dengan file yang sudah ada.
+- **Kode**: `Retina.cs` (Core, tanpa Godot: `VisionMode`, `Retina.Add`, `LoadMap`, `Gain`), `SensorFrame.LoomBinsL/R`, `SensorEncoder` (jalur skalar ATAU sektor, tidak dua-duanya), `NpcBase.Vision` + `Sense`, `MapBase.SpawnNpc/SpawnBrain(..., VisionMode)`, dropdown spawn "Otak·retina", `BenchmarkRunner --vision=retina` -> folder `brain_retina_n*_s*`, `run_benchmarks.py --retina`, `analyze_bench.py` mengenali `brain_retina`. FSM tetap membaca LoomL/R. Kartu Pandangan NPC punya mode ketiga "Retina (sektor)" (8 sektor kiri/kanan dalam Hz); mode Input Otak memakai sektor terkuat untuk baris Looming.
+- **Kalibrasi**: satu sektor hanya ~1/8 neuron, sehingga `Retina.Gain = 2` ditetapkan agar ancaman ukuran pemain (setengah lebar ~0,3 rad) memicu Giant Fiber setara skalar; tanpa itu retina tidak pernah kabur kecuali ancaman > 1 rad.
+- **Temuan untuk laporan**: (1) ancaman dari belakang (|arah| > 1,2 rad) nyaris tidak terdeteksi pada peta proksi soma (titik buta; bisa artefak proksi, bukan fakta anatomi); (2) ancaman kecil/jauh lebih lemah daripada besar (integrasi spasial), sedangkan skalar tak peka ukuran; (3) uji dalam game 12 rusa/kucing dikejar pemain 50 s: kabur per NPC skalar 8,4 vs retina 5,0.
+- **Perbaikan sampingan**: `statsLabel` dan `inspectLabel` di Dashboard memakai `ClipText = true` + autowrap sehingga teksnya tak tampil sama sekali (dari commit a3df363); `ClipText` dinonaktifkan pada keduanya.
+- **Verifikasi**: `dotnet build` 0/0; `dotnet test` 11/11 (2 uji baru: partisi peta retina + arah kabur skalar vs retina); smoke benchmark `--bench=brain --vision=retina --n=10 --duration=30`; tangkapan layar kartu Retina.
+- **Berikutnya**: jalankan benchmark penuh `--retina` untuk perbandingan statistik; pertimbangkan okulusi raycast dan validasi peta dengan koordinat dendrit bila tersedia.
+
 ## 4. Keputusan yang Sudah Diambil / Pertanyaan Terbuka
 
 Keputusan:

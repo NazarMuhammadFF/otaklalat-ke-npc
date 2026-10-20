@@ -8,6 +8,7 @@ namespace OtakLalat.Brain;
 public static class BrainAssets
 {
     public const string BrainPath = "res://data/brain/fly_npc_brain.json";
+    public const string RetinaPath = "res://data/brain/retina_map.json";
     public static readonly LifParams Params = new();
     static readonly Lazy<Connectome> connectome = new(() =>
     {
@@ -15,6 +16,9 @@ public static class BrainAssets
         if (string.IsNullOrEmpty(json))
             throw new InvalidOperationException($"{BrainPath} tidak ada. Jalankan tools/connectome/extract_subcircuits.py");
         var c = Connectome.FromJson(json, Params.WSyn);
+        // opsional: tanpa peta retina, mode retinotopik tidak tersedia (mode skalar tetap jalan)
+        var retina = FileAccess.GetFileAsString(RetinaPath);
+        if (!string.IsNullOrEmpty(retina)) Retina.LoadMap(c, retina);
         GD.Print($"[otak] {c.N} neuron, {c.Indices.Length} sinapsis, {c.PlasticW0.Length} sinapsis plastik");
         return c;
     });

@@ -6,6 +6,7 @@ namespace OtakLalat.Brain.Core;
 public struct SensorFrame
 {
     public float LoomL, LoomR;                  // kekuatan looming per mata
+    public float[] LoomBinsL, LoomBinsR;        // looming per sektor retina (null = mode skalar)
     public float SugarL, SugarR, BitterL, BitterR;
     public float OdorFoodL, OdorFoodR, OdorPoisonL, OdorPoisonR, OdorNeutralL, OdorNeutralR;
     public float YawRate;                       // rad/s, + = belok kiri (umpan balik gerak sendiri)
@@ -30,6 +31,7 @@ public sealed class SensorEncoder
     float ou;   // state OU, rata-rata 0
     readonly int loomL, loomR, sugarL, sugarR, bitterL, bitterR, epg, penL, penR, erL, erR, reward, punish;
     readonly int[] odor = new int[6];
+    readonly int[] binL, binR;                  // drive per sektor retina (kosong bila peta belum dimuat)
 
     public SensorEncoder(BrainState state, ulong seed)
     {
@@ -42,6 +44,13 @@ public sealed class SensorEncoder
         penL = s.AddDrive("in_pen_L"); penR = s.AddDrive("in_pen_R");
         erL = s.AddDrive("in_er_L"); erR = s.AddDrive("in_er_R");
         reward = s.AddDrive("in_dan_reward"); punish = s.AddDrive("in_dan_punish");
+        int k = s.C.RetinaSectors;
+        binL = new int[k]; binR = new int[k];
+        for (int i = 0; i < k; i++)
+        {
+            binL[i] = s.AddDrive($"{Retina.GroupPrefix}L_s{i}");
+            binR[i] = s.AddDrive($"{Retina.GroupPrefix}R_s{i}");
+        }
         string[] names = { "food_L", "food_R", "poison_L", "poison_R", "neutral_L", "neutral_R" };
         for (int i = 0; i < names.Length; i++) odor[i] = s.AddDrive("in_odor_" + names[i]);
     }
@@ -61,8 +70,16 @@ public sealed class SensorEncoder
         // OU: dx = -x/tau dt + sqrt(2/tau) dW  (varians stasioner 1)
         float z = (rng.NextFloat() + rng.NextFloat() + rng.NextFloat() - 1.5f) * 2f;   // ~N(0,1)
         ou += -ou * dtSec / DriveNoiseTauS + MathF.Sqrt(2f * dtSec / DriveNoiseTauS) * z;
-        s.SetDrive(loomL, LoomHz * t.Fearfulness * f.LoomL);
-        s.SetDrive(loomR, LoomHz * t.Fearfulness * f.LoomR);
+        // Retinotopik: tiap sektor mendapat looming-nya sendiri; skalar: satu angka untuk seluruh grup mata.
+        // Hanya satu jalur yang aktif pada satu waktu (yang lain 0) agar tidak terjadi penghitungan ganda.
+        bool retina = f.LoomBinsL != null && f.LoomBinsR != null && f.LoomBinsL.Length == binL.Length && binL.Length > 0;
+        s.SetDrive(loomL, retina ? 0f : LoomHz * t.Fearfulness * f.LoomL);
+        s.SetDrive(loomR, retina ? 0f : LoomHz * t.Fearfulness * f.LoomR);
+        for (int i = 0; i < binL.Length; i++)
+        {
+            s.SetDrive(binL[i], retina ? LoomHz * Retina.Gain * t.Fearfulness * f.LoomBinsL[i] : 0f);
+            s.SetDrive(binR[i], retina ? LoomHz * Retina.Gain * t.Fearfulness * f.LoomBinsR[i] : 0f);
+        }
         // lapar menaikkan sensitivitas GRN gula (Inagaki et al. 2014)
         float sugarGain = SugarHz * t.Appetite * Math.Clamp(0.15f + f.Hunger, 0f, 1.2f);
         s.SetDrive(sugarL, sugarGain * f.SugarL);

@@ -30,12 +30,13 @@ public partial class NpcEyeView : VBoxContainer
     public NpcEyeView()
     {
         SizeFlagsVertical = SizeFlags.ExpandFill;
-        ModeSelect = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = false };
+        ModeSelect = new OptionButton { FocusMode = FocusModeEnum.None, FitToLongestItem = true };
         ModeSelect.AddItem("📷 Kamera NPC");
         ModeSelect.AddItem("🧠 Input Otak");
+        ModeSelect.AddItem("🔬 Retina (sektor)");
         ModeSelect.AddThemeFontSizeOverride("font_size", 10);
 
-        var stack = new Control { CustomMinimumSize = new Vector2(0, 150), SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true };
+        var stack = new Control { CustomMinimumSize = new Vector2(0, 120), SizeFlagsVertical = SizeFlags.ExpandFill, ClipContents = true };
         AddChild(stack);
 
         camBox = new SubViewportContainer { Stretch = true, MouseFilter = MouseFilterEnum.Ignore };
@@ -98,6 +99,7 @@ public partial class NpcEyeView : VBoxContainer
         bool cam = ModeSelect.Selected == 0;
         camBox.Visible = cam;
         sensor.Visible = !cam && npc != null;
+        sensor.Retina = ModeSelect.Selected == 2;
         placeholder.Visible = npc == null;
     }
 
@@ -115,6 +117,7 @@ public partial class NpcEyeView : VBoxContainer
     sealed partial class SensorPanel : Control
     {
         public NpcBase Npc;
+        public bool Retina;
 
         public override void _Process(double delta)
         {
@@ -128,6 +131,7 @@ public partial class NpcEyeView : VBoxContainer
             var f = Npc.Frame;
             var b = Npc as BrainNpc;
             var font = ThemeDB.FallbackFont;
+            if (Retina) { DrawRetina(f, b, font); return; }
             float w = Size.X, h = Size.Y, cx = w / 2f;
             const float labelW = 52f, pad = 5f;
             float zone = cx - labelW / 2f - pad;
@@ -137,10 +141,17 @@ public partial class NpcEyeView : VBoxContainer
             DrawString(font, new Vector2(w - pad - 40, 11), "KANAN ▶", HorizontalAlignment.Right, 40, 9, new Color(0.6f, 0.7f, 0.8f));
 
             var t = b?.Traits ?? default;
+            float loomL = f.LoomL, loomR = f.LoomR;
+            if (f.LoomBinsL != null && f.LoomBinsR != null)
+            {
+                loomL = 0f; loomR = 0f;
+                foreach (var x in f.LoomBinsL) loomL = Mathf.Max(loomL, x);
+                foreach (var x in f.LoomBinsR) loomR = Mathf.Max(loomR, x);
+            }
             float sugarGain = b != null ? SensorEncoder.SugarHz * t.Appetite * Mathf.Clamp(0.15f + f.Hunger, 0f, 1.2f) : 1f;
             (string name, Color col, float l, float r, float refv)[] rows =
             {
-                ("Looming", new Color(1f, 0.35f, 0.35f), Rate(b, f.LoomL, SensorEncoder.LoomHz * t.Fearfulness), Rate(b, f.LoomR, SensorEncoder.LoomHz * t.Fearfulness), b != null ? SensorEncoder.LoomHz : 1f),
+                ("Looming", new Color(1f, 0.35f, 0.35f), Rate(b, loomL, SensorEncoder.LoomHz * t.Fearfulness), Rate(b, loomR, SensorEncoder.LoomHz * t.Fearfulness), b != null ? SensorEncoder.LoomHz : 1f),
                 ("Gula", new Color(0.4f, 0.9f, 0.5f), Rate(b, f.SugarL, sugarGain), Rate(b, f.SugarR, sugarGain), b != null ? SensorEncoder.SugarHz : 1f),
                 ("Pahit", new Color(0.75f, 0.5f, 1f), Rate(b, f.BitterL, SensorEncoder.BitterHz * t.Pickiness), Rate(b, f.BitterR, SensorEncoder.BitterHz * t.Pickiness), b != null ? SensorEncoder.BitterHz : 1f),
                 ("Bau makan", new Color(0.55f, 0.95f, 0.35f), Odor(b, f.OdorFoodL, f.OdorFoodR), Odor(b, f.OdorFoodR, f.OdorFoodL), b != null ? SensorEncoder.OdorHz : 1f),
@@ -170,6 +181,38 @@ public partial class NpcEyeView : VBoxContainer
             if (f.Reward > 0) sun += " · REWARD";
             if (f.Punish > 0) sun += " · SAKIT";
             DrawString(font, new Vector2(pad, fy + 17), sun, HorizontalAlignment.Left, w - 2 * pad, 9, new Color(0.8f, 0.85f, 0.9f));
+        }
+
+        void DrawRetina(in SensorFrame f, BrainNpc b, Font font)
+        {
+            float w = Size.X, h = Size.Y, cx = w / 2f;
+            if (b == null || f.LoomBinsL == null || f.LoomBinsR == null)
+            {
+                string msg = b == null ? "NPC FSM: tanpa retina (membaca looming skalar L/R)" : "NPC ini memakai penglihatan Skalar. Spawn dengan 'Otak·retina' untuk peta sektor.";
+                DrawMultilineString(font, new Vector2(6, h / 2 - 8), msg, HorizontalAlignment.Center, w - 12, 10, -1, new Color(0.75f, 0.8f, 0.85f));
+                return;
+            }
+            int k = f.LoomBinsL.Length;
+            const float labelW = 40f, pad = 5f;
+            float zone = cx - labelW / 2f - pad, top = 16f, rowH = (h - top - 14f) / k;
+            var t = b.Traits;
+            DrawString(font, new Vector2(pad, 11), "◀ MATA KIRI (Hz)", HorizontalAlignment.Left, -1, 9, new Color(0.6f, 0.7f, 0.8f));
+            DrawString(font, new Vector2(w - pad - 70, 11), "MATA KANAN ▶", HorizontalAlignment.Right, 70, 9, new Color(0.6f, 0.7f, 0.8f));
+            for (int i = 0; i < k; i++)
+            {
+                float y = top + i * rowH, bh = Mathf.Max(4f, rowH - 3f);
+                float l = SensorEncoder.LoomHz * t.Fearfulness * f.LoomBinsL[i], r = SensorEncoder.LoomHz * t.Fearfulness * f.LoomBinsR[i];
+                DrawRect(new Rect2(pad, y, zone, bh), new Color(1, 1, 1, 0.06f));
+                DrawRect(new Rect2(cx + labelW / 2f, y, zone, bh), new Color(1, 1, 1, 0.06f));
+                float lw = zone * Mathf.Clamp(l / SensorEncoder.LoomHz, 0f, 1f), rw = zone * Mathf.Clamp(r / SensorEncoder.LoomHz, 0f, 1f);
+                var col = new Color(1f, 0.35f + 0.03f * i, 0.35f);
+                DrawRect(new Rect2(pad + zone - lw, y, lw, bh), col);
+                DrawRect(new Rect2(cx + labelW / 2f, y, rw, bh), col);
+                string name = i == 0 ? "S0 dpn" : i == k - 1 ? $"S{i} blk" : $"S{i}";
+                DrawString(font, new Vector2(cx - labelW / 2f, y + bh - 1), name, HorizontalAlignment.Center, labelW, 9, new Color(0.85f, 0.9f, 0.95f));
+                DrawString(font, new Vector2(pad + 2, y + bh - 1), l.ToString("F0"), HorizontalAlignment.Left, zone, 9, new Color(0, 0, 0, 0.9f));
+                DrawString(font, new Vector2(w - pad - 2 - zone, y + bh - 1), r.ToString("F0"), HorizontalAlignment.Right, zone, 9, new Color(0, 0, 0, 0.9f));
+            }
         }
 
         static float Rate(BrainNpc b, float v, float gain) => b != null ? v * gain : v;

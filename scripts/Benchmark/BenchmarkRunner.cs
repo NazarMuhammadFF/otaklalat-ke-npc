@@ -48,7 +48,7 @@ public partial class BenchmarkRunner : Node
         n = int.Parse(Arg("n", "50"));
         duration = float.Parse(Arg("duration", "120"), CultureInfo.InvariantCulture);
         string seed = Arg("seed", "1");
-        outDir = Path.Combine(ProjectSettings.GlobalizePath(Arg("out", "res://bench_out")), $"{method}_n{n}_s{seed}");
+        outDir = Path.Combine(ProjectSettings.GlobalizePath(Arg("out", "res://bench_out")), $"{method}{(Arg("vision", "scalar") == "retina" ? "_retina" : "")}_n{n}_s{seed}");
         arena.Ai.LodEnabled = Arg("lod", "0") == "1";
         arena.Ai.Parallel = Arg("parallel", "1") == "1";
         traceId = int.Parse(Arg("trace", "-1"));
@@ -59,7 +59,7 @@ public partial class BenchmarkRunner : Node
         for (int i = 0; i < n; i++)
         {
             string type = Arena.TypeIds[i % Arena.TypeIds.Length];
-            NpcBase npc = method == "fsm" ? arena.SpawnFsm(type, arena.RandomSpot()) : arena.SpawnBrain(type, arena.RandomSpot());
+            NpcBase npc = method == "fsm" ? arena.SpawnFsm(type, arena.RandomSpot()) : arena.SpawnBrain(type, arena.RandomSpot(), Arg("vision", "scalar") == "retina" ? OtakLalat.Brain.Core.VisionMode.Retinotopic : OtakLalat.Brain.Core.VisionMode.Scalar);
             ids[npc] = i;
             npcs.Add(npc);
         }

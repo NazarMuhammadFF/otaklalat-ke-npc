@@ -187,7 +187,7 @@ public partial class Dashboard : Control
         fpsLabel.AddThemeColorOverride("font_color", new Color(0.4f, 0.9f, 0.6f));
         topRow.AddChild(fpsLabel);
 
-        tickLabel = new Label { Text = "Tick: 0.00ms", CustomMinimumSize = new Vector2(85, 0), ClipText = true };
+        tickLabel = new Label { Text = "Tick: 0.00ms", CustomMinimumSize = new Vector2(92, 0), ClipText = true };
         tickLabel.AddThemeColorOverride("font_color", new Color(0.9f, 0.8f, 0.4f));
         topRow.AddChild(tickLabel);
 
@@ -207,37 +207,51 @@ public partial class Dashboard : Control
     // =========================================================================
     void BuildLeftColumn(HBoxContainer parent)
     {
-        var col = new VBoxContainer
+        var wrap = new Control
         {
-            CustomMinimumSize = new Vector2(245, 0),
+            CustomMinimumSize = new Vector2(270, 0),
             SizeFlagsHorizontal = SizeFlags.ShrinkBegin,
             SizeFlagsVertical = SizeFlags.ExpandFill,
+            ClipContents = true,
         };
+        var col = new VBoxContainer
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        col.SetAnchorsPreset(LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 6);
+        wrap.AddChild(col);
 
         // Card 1: 🐾 Spawner Populasi
         var cardSpawn = CreateBentoCard("🐾 SPAWNER POPULASI", new Color(0.20f, 0.83f, 0.60f), out var spawnBox);
+        
         var row1 = new HBoxContainer();
+        row1.AddThemeConstantOverride("separation", 4);
         typeOpt = new OptionButton { FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
         foreach (var t in MapBase.TypeIds) typeOpt.AddItem(t);
-        methodOpt = new OptionButton { FocusMode = FocusModeEnum.None };
+        methodOpt = new OptionButton { FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill, FitToLongestItem = true };
         methodOpt.AddItem("Otak");
         methodOpt.AddItem("FSM");
+        methodOpt.AddItem("Otak·retina");
         row1.AddChild(typeOpt);
         row1.AddChild(methodOpt);
-        var spawnBtn = new Button { Text = "+ Spawn", FocusMode = FocusModeEnum.None };
-        spawnBtn.Pressed += SpawnAtCenter;
-        row1.AddChild(spawnBtn);
         spawnBox.AddChild(row1);
 
         var row2 = new HBoxContainer();
-        clickSpawnCheck = new CheckButton { Text = "Klik lantai spawn", FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-        clickSpawnCheck.Toggled += on => clickSpawn = on;
-        row2.AddChild(clickSpawnCheck);
+        row2.AddThemeConstantOverride("separation", 4);
+        var spawnBtn = new Button { Text = "+ Spawn", FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        spawnBtn.Pressed += SpawnAtCenter;
+        row2.AddChild(spawnBtn);
         var clearBtn = new Button { Text = "🗑️ Hapus", FocusMode = FocusModeEnum.None };
         clearBtn.Pressed += () => { Select(null); currentMap?.ClearNpcs(); };
         row2.AddChild(clearBtn);
         spawnBox.AddChild(row2);
+
+        var row3 = new HBoxContainer();
+        clickSpawnCheck = new CheckButton { Text = "Klik lantai spawn", FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        clickSpawnCheck.Toggled += on => clickSpawn = on;
+        row3.AddChild(clickSpawnCheck);
+        spawnBox.AddChild(row3);
         col.AddChild(cardSpawn);
 
         // Card 2: 🎯 Skenario Uji Khusus
@@ -265,7 +279,6 @@ public partial class Dashboard : Control
         cardStats.SizeFlagsVertical = SizeFlags.ExpandFill;
         statsLabel = new Label
         {
-            ClipText = true,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
         statsLabel.AddThemeFontSizeOverride("font_size", 11);
@@ -286,7 +299,7 @@ public partial class Dashboard : Control
         helpPill.AddChild(helpLbl);
         col.AddChild(helpPill);
 
-        parent.AddChild(col);
+        parent.AddChild(wrap);
     }
 
     // =========================================================================
@@ -395,25 +408,32 @@ public partial class Dashboard : Control
     // =========================================================================
     void BuildRightColumn(HBoxContainer parent)
     {
-        var col = new VBoxContainer
+        var wrap = new Control
         {
-            CustomMinimumSize = new Vector2(265, 0),
+            CustomMinimumSize = new Vector2(270, 0),
             SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
             SizeFlagsVertical = SizeFlags.ExpandFill,
+            ClipContents = true,
         };
+        var col = new VBoxContainer
+        {
+            SizeFlagsVertical = SizeFlags.ExpandFill,
+        };
+        col.SetAnchorsPreset(LayoutPreset.FullRect);
         col.AddThemeConstantOverride("separation", 6);
+        wrap.AddChild(col);
 
         // Card 6: 🔬 Inspeksi Entitas Terpilih
         var deselectBtn = new Button { Text = "❌ Batal", FocusMode = FocusModeEnum.None };
         deselectBtn.Pressed += () => Select(null);
         var cardInspect = CreateBentoCard("🔬 INSPEKSI ENTITAS", new Color(0.18f, 0.83f, 0.75f), out var inspectBox, deselectBtn);
+        cardInspect.CustomMinimumSize = new Vector2(0, 105);
         inspectLabel = new Label
         {
             Text = "Klik hewan di dalam frame simulasi 3D untuk menginspeksi aktivitas sirkuit saraf dan motorik.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
-            ClipText = true,
         };
-        inspectLabel.AddThemeFontSizeOverride("font_size", 11);
+        inspectLabel.AddThemeFontSizeOverride("font_size", 10);
         inspectLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.92f, 0.98f));
         inspectBox.AddChild(inspectLabel);
         col.AddChild(cardInspect);
@@ -422,20 +442,21 @@ public partial class Dashboard : Control
         eyeView = new NpcEyeView();
         var cardEye = CreateBentoCard("👁 PANDANGAN NPC", new Color(0.65f, 0.55f, 0.98f), out var eyeBox, eyeView.ModeSelect);
         cardEye.SizeFlagsVertical = SizeFlags.ExpandFill;
-        cardEye.SizeFlagsStretchRatio = 0.8f;
+        cardEye.SizeFlagsStretchRatio = 0.75f;
         eyeBox.AddChild(eyeView);
         col.AddChild(cardEye);
 
         // Card 7: 🧬 6 Knob Sifat Biologis (Live Modulasi)
         var cardTraits = CreateBentoCard("🧬 6 KNOB SIFAT (LIVE)", new Color(0.96f, 0.62f, 0.04f), out var traitBox);
         cardTraits.SizeFlagsVertical = SizeFlags.ExpandFill;
+        traitBox.AddThemeConstantOverride("separation", 2);
 
         noticeTraitsLabel = new Label
         {
             Text = "Pilih NPC Otak untuk modulasi 6 sifat biologi secara langsung.",
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
         };
-        noticeTraitsLabel.AddThemeFontSizeOverride("font_size", 10);
+        noticeTraitsLabel.AddThemeFontSizeOverride("font_size", 9);
         noticeTraitsLabel.AddThemeColorOverride("font_color", new Color(0.7f, 0.75f, 0.8f));
         traitBox.AddChild(noticeTraitsLabel);
 
@@ -444,10 +465,10 @@ public partial class Dashboard : Control
             int k = i;
             var row = new HBoxContainer();
             var nameLbl = new Label { Text = TraitNames[i], SizeFlagsHorizontal = SizeFlags.ExpandFill };
-            nameLbl.AddThemeFontSizeOverride("font_size", 11);
+            nameLbl.AddThemeFontSizeOverride("font_size", 10);
             var valLbl = new Label { Text = "1.00" };
             valLbl.AddThemeColorOverride("font_color", new Color(0.96f, 0.85f, 0.4f));
-            valLbl.AddThemeFontSizeOverride("font_size", 11);
+            valLbl.AddThemeFontSizeOverride("font_size", 10);
             row.AddChild(nameLbl);
             row.AddChild(valLbl);
             sliderValLabels.Add(valLbl);
@@ -458,7 +479,7 @@ public partial class Dashboard : Control
                 MinValue = 0,
                 MaxValue = 2,
                 Step = 0.05,
-                CustomMinimumSize = new Vector2(0, 14),
+                CustomMinimumSize = new Vector2(0, 10),
                 Editable = false,
                 FocusMode = FocusModeEnum.None,
             };
@@ -472,7 +493,7 @@ public partial class Dashboard : Control
         }
         col.AddChild(cardTraits);
 
-        parent.AddChild(col);
+        parent.AddChild(wrap);
     }
 
     // =========================================================================
@@ -607,8 +628,8 @@ public partial class Dashboard : Control
     {
         if (currentMap == null) return;
         string type = typeOpt.GetItemText(typeOpt.Selected);
-        bool isBrain = methodOpt.Selected == 0;
-        var n = currentMap.SpawnNpc(type, isBrain, pos);
+        bool isBrain = methodOpt.Selected != 1;
+        var n = currentMap.SpawnNpc(type, isBrain, pos, methodOpt.Selected == 2 ? VisionMode.Retinotopic : VisionMode.Scalar);
         Select(n);
     }
 

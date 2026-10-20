@@ -25,9 +25,9 @@ REPORT = ROOT / "reports"
 FIG = REPORT / "figures"
 
 # palet referensi (dataviz skill, slot 1-4, mode terang) + token teks/permukaan
-COLORS = {"fsm": "#2a78d6", "brain": "#eb6834", "brain_lod": "#1baf7a"}
+COLORS = {"fsm": "#2a78d6", "brain": "#eb6834", "brain_lod": "#1baf7a", "brain_retina": "#8b5cf6"}
 TYPE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
-LABELS = {"fsm": "FSM (tradisional)", "brain": "Otak lalat", "brain_lod": "Otak lalat + LOD"}
+LABELS = {"fsm": "FSM (tradisional)", "brain": "Otak lalat", "brain_lod": "Otak lalat + LOD", "brain_retina": "Otak lalat + retina"}
 SURFACE, TEXT, TEXT2, GRID = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df"
 DANGER = (-4.0, -2.0, 3.5)
 NEAR_DANGER = 7.0
@@ -43,7 +43,7 @@ plt.rcParams.update({
 def load_runs():
     runs = []
     for d in sorted(BENCH.glob("*_n*_s*")):
-        m = re.match(r"(brain_lod|brain|fsm)_n(\d+)_s(\d+)$", d.name)
+        m = re.match(r"(brain_retina|brain_lod|brain|fsm)_n(\d+)_s(\d+)$", d.name)
         if not m or not (d / "npcs.csv").exists():
             continue
         runs.append(dict(method=m[1], n=int(m[2]), seed=int(m[3]), dir=d))
@@ -158,7 +158,7 @@ def main():
     (REPORT / "bench_summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False))
 
     # ---------------- grafik ----------------
-    methods = [m for m in ("fsm", "brain", "brain_lod") if m in rt.method.unique()]
+    methods = [m for m in ("fsm", "brain", "brain_lod", "brain_retina") if m in rt.method.unique()]
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4))
     for m in methods:

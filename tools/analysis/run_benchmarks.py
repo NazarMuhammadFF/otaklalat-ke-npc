@@ -4,7 +4,7 @@ Pemakaian:
   set GODOT=D:\\Ruang game\\Godot\\Godot_v4.7.2-stable_mono_win64\\Godot_v4.7.2-stable_mono_win64_console.exe
   python tools/analysis/run_benchmarks.py [--n 10 50 100 200] [--seeds 1 2 3] [--duration 120]
 
-Keluaran: bench_out/<metode>[_lod]_n<N>_s<seed>/ (dibaca analyze_bench.py)
+Keluaran: bench_out/<metode>[_retina][_lod]_n<N>_s<seed>/ (dibaca analyze_bench.py)
 """
 import argparse
 import os
@@ -18,8 +18,8 @@ ROOT = Path(__file__).parents[2]
 DEFAULT_GODOT = r"D:\Ruang game\Godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64_console.exe"
 
 
-def run(godot, method, n, seed, duration, lod):
-    name = f"{method}{'_lod' if lod else ''}_n{n}_s{seed}"
+def run(godot, method, n, seed, duration, lod, retina=False):
+    name = f"{method}{'_retina' if retina else ''}{'_lod' if lod else ''}_n{n}_s{seed}"
     out = ROOT / "bench_out"
     target = out / name
     if (target / "npcs.csv").exists():
@@ -30,9 +30,11 @@ def run(godot, method, n, seed, duration, lod):
     args = [godot, "--headless", "--path", str(ROOT), "--fixed-fps", "60", "res://scenes/Arena.tscn", "--",
             f"--bench={method}", f"--n={n}", f"--seed={seed}", f"--duration={duration}", f"--lod={1 if lod else 0}",
             f"--out={run_out}"]
+    if retina:
+        args.append("--vision=retina")
     t0 = time.time()
     res = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", errors="replace")
-    produced = run_out / f"{method}_n{n}_s{seed}"
+    produced = run_out / f"{method}{'_retina' if retina else ''}_n{n}_s{seed}"
     if res.returncode != 0 or not (produced / "npcs.csv").exists():
         print(res.stdout[-2000:], res.stderr[-2000:])
         raise SystemExit(f"benchmark gagal: {name}")
@@ -50,6 +52,7 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3])
     ap.add_argument("--duration", type=float, default=120)
     ap.add_argument("--lod", action="store_true", help="juga jalankan otak dengan brain-LOD")
+    ap.add_argument("--retina", action="store_true", help="juga jalankan otak dengan penglihatan retinotopik (brain_retina)")
     args = ap.parse_args()
     godot = os.environ.get("GODOT", DEFAULT_GODOT)
     if not Path(godot).exists():
@@ -60,6 +63,8 @@ def main():
                 run(godot, method, n, seed, args.duration, lod=False)
             if args.lod:
                 run(godot, "brain", n, seed, args.duration, lod=True)
+            if args.retina:
+                run(godot, "brain", n, seed, args.duration, lod=False, retina=True)
 
 
 if __name__ == "__main__":

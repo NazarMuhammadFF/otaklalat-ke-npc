@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Godot;
 using OtakLalat.Brain;
+using OtakLalat.Brain.Core;
 using OtakLalat.Npc;
 
 namespace OtakLalat.World;
@@ -200,19 +201,20 @@ public abstract partial class MapBase : Node3D
     }
 
     /// <summary>Tempatkan NPC; <paramref name="pos"/> dijepit ke dalam dinding arena.</summary>
-    public NpcBase SpawnNpc(string type, bool brain, Vector3 pos)
+    public NpcBase SpawnNpc(string type, bool brain, Vector3 pos, VisionMode vision = VisionMode.Scalar)
     {
         float lim = HalfSize - 1f;
         pos = new Vector3(Mathf.Clamp(pos.X, -lim, lim), 0.1f, Mathf.Clamp(pos.Z, -lim, lim));
-        return brain ? SpawnBrain(type, pos) : SpawnFsm(type, pos);
+        return brain ? SpawnBrain(type, pos, vision) : SpawnFsm(type, pos);
     }
 
-    public BrainNpc SpawnBrain(string type, Vector3 pos)
+    public BrainNpc SpawnBrain(string type, Vector3 pos, VisionMode vision = VisionMode.Scalar)
     {
         var n = new BrainNpc
         {
             Profile = GD.Load<TraitProfile>($"res://data/npc_types/brain/{type}.tres"),
             Seed = nextSeed++, Position = pos, Rotation = new Vector3(0, Rng.RandfRange(-Mathf.Pi, Mathf.Pi), 0),
+            Vision = vision,
         };
         AddChild(n);
         return n;

@@ -99,6 +99,74 @@ public class BehaviorTests
         Assert.True(fearful.escapes > brave.escapes);
     }
 
+    static Connectome LoadWithRetina()
+    {
+        var c = Load();
+        var d = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(d.FullName, "project.godot"))) d = d.Parent;
+        Retina.LoadMap(c, File.ReadAllText(Path.Combine(d.FullName, "data/brain/retina_map.json")));
+        return c;
+    }
+
+    /// <summary>Peta retina: tiap neuron looming tepat satu sektor; Retina.Add mengisi sektor sesuai arah dan lebar sudut.</summary>
+    [Fact]
+    public void Retina_MapPartitionsLoomNeurons_AndAddFillsCoveredSectors()
+    {
+        var c = LoadWithRetina();
+        Assert.Equal(8, c.RetinaSectors);
+        foreach (var s in new[] { "L", "R" })
+        {
+            var all = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < c.RetinaSectors; i++) all.AddRange(c.Group($"in_loom_{s}_s{i}"));
+            Assert.Equal(c.Group($"in_loom_{s}").Length, all.Count);
+            Assert.Equal(new System.Collections.Generic.HashSet<int>(c.Group($"in_loom_{s}")), new System.Collections.Generic.HashSet<int>(all));
+        }
+        var l = new float[8]; var r = new float[8];
+        Retina.Add(0.5f, 0.05f, 0.7f, l, r);     // benda kecil di kiri depan -> hanya mata kiri
+        Assert.Contains(l, v => v > 0f);
+        Assert.DoesNotContain(r, v => v > 0f);
+        Array.Clear(l); Array.Clear(r);
+        Retina.Add(0f, 0.05f, 0.7f, l, r);       // lurus depan -> kedua mata, sektor 0
+        Assert.Equal(0.7f, l[0]); Assert.Equal(0.7f, r[0]);
+    }
+
+    /// <summary>Retinotopik vs skalar pada looming dari berbagai arah: ancaman di kiri dijauhi (belok kanan), dan sebaliknya.</summary>
+    [Fact]
+    public void Retina_Looming_EscapesAwayFromThreatSide()
+    {
+        var c = LoadWithRetina();
+        (int esc, float turn) Run(float bearing, bool retina, float half, float str)
+        {
+            var b = new FlyBrain(c, new LifParams(), 3);
+            var t = Traits.Neutral;
+            int esc = 0; float turnSum = 0;
+            var l = new float[8]; var r = new float[8];
+            for (int i = 0; i < 90; i++)
+            {
+                Array.Clear(l); Array.Clear(r);
+                var f = new SensorFrame();
+                if (retina) { Retina.Add(bearing, half, str, l, r); f.LoomBinsL = l; f.LoomBinsR = r; }
+                else { if (bearing > -0.3f) f.LoomL = str; if (bearing < 0.3f) f.LoomR = str; }
+                var cmd = b.Tick(f, t, 1 / 60f);
+                if (cmd.Escape) { esc++; turnSum += cmd.Turn; }
+            }
+            return (esc, esc > 0 ? turnSum / esc : 0f);
+        }
+        foreach (var bearing in new[] { 1.5f, 0.8f, 0f, -0.8f, -1.5f })
+        {
+            var sc = Run(bearing, false, 0f, 1f);
+            var big = Run(bearing, true, 0.3f, 1f);        // ancaman ukuran pemain di jarak dekat
+            var tiny = Run(bearing, true, 0.05f, 0.3f);    // ancaman kecil/jauh
+            output.WriteLine($"arah {bearing:+0.0;-0.0}: skalar {sc.esc}/90 ({sc.turn:+0.0;-0.0}) | retina besar {big.esc}/90 ({big.turn:+0.0;-0.0}) | retina kecil {tiny.esc}/90");
+            // temuan: ancaman dari belakang (|arah| > 1,2 rad) nyaris tidak terdeteksi pada peta proksi soma (titik buta); hanya dicatat
+            if (MathF.Abs(bearing) > 1.2f) continue;
+            Assert.True(big.esc > 0, $"ancaman ukuran pemain di arah {bearing} harus memicu kabur");
+            Assert.True(tiny.esc < big.esc, "ancaman kecil harus lebih lemah daripada yang besar");
+            if (bearing > 0.5f) Assert.True(big.turn < 0, "ancaman kiri -> belok kanan");
+            if (bearing < -0.5f) Assert.True(big.turn > 0, "ancaman kanan -> belok kiri");
+        }
+    }
+
     /// <summary>Gula memicu MN9 (makan) hanya bila cukup lapar; ambang lapar bergantung trait Appetite.</summary>
     [Fact]
     public void Feeding_DependsOnHungerAndAppetite()

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Godot;
+using OtakLalat.Brain;
 using OtakLalat.Brain.Core;
 using OtakLalat.World;
 
@@ -29,6 +30,9 @@ public abstract partial class NpcBase : CharacterBody3D
 
     public float Hunger = 0.4f;
     public SensorFrame Frame;
+    /// <summary>Jalur penglihatan looming ke otak (variabel eksperimen). Hanya NPC Otak yang memakainya; FSM tetap membaca LoomL/R.</summary>
+    public VisionMode Vision = VisionMode.Scalar;
+    float[] loomBinsL, loomBinsR;
     public MotorCommand Command;
     public readonly NpcMetrics Metrics = new();
     public abstract string TypeName { get; }
@@ -181,6 +185,13 @@ public abstract partial class NpcBase : CharacterBody3D
     {
         var f = new SensorFrame { Hunger = Hunger, YawRate = yawRate };
         var head = GlobalPosition + new Vector3(0, 0.8f, 0);
+        bool retina = Vision == VisionMode.Retinotopic && BrainAssets.Connectome.RetinaSectors > 0;
+        if (retina)
+        {
+            int k = BrainAssets.Connectome.RetinaSectors;
+            loomBinsL ??= new float[k]; loomBinsR ??= new float[k];
+            System.Array.Clear(loomBinsL); System.Array.Clear(loomBinsR);
+        }
 
         foreach (var l in WorldRegistry.Loomers)
         {
@@ -193,7 +204,9 @@ public abstract partial class NpcBase : CharacterBody3D
             float b = Bearing(l.LoomPosition);
             if (b > -0.3f) f.LoomL = Mathf.Max(f.LoomL, s);
             if (b < 0.3f) f.LoomR = Mathf.Max(f.LoomR, s);
+            if (retina) Retina.Add(b, theta * 0.5f, s, loomBinsL, loomBinsR);
         }
+        if (retina) { f.LoomBinsL = loomBinsL; f.LoomBinsR = loomBinsR; }
 
         touching = null;
         float best = float.MaxValue;
@@ -324,7 +337,7 @@ public abstract partial class NpcBase : CharacterBody3D
             : touchingBitter && !cmd.Eat ? ("🤢", new Color(0.8f, 0.55f, 1f))
             : cmd.Eat && touching != null ? (touching.IsPoison ? "🤢" : "🍎", new Color(0.45f, 1f, 0.5f))
             : ("🧭", AiMethod == "otak" ? new Color(0.75f, 0.92f, 1f) : new Color(1f, 0.92f, 0.7f));
-        string badge = AiMethod == "otak" ? "🧠Otak" : "⚙️FSM";
+        string badge = AiMethod == "otak" ? (Vision == VisionMode.Retinotopic ? "🧠Otak·retina" : "🧠Otak") : "⚙️FSM";
         label.Modulate = col;
         label.Text = $"{emote} {TypeName} [{badge}]\n{StatusText}";
     }

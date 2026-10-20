@@ -53,7 +53,7 @@ Dokumen ini adalah **satu-satunya sumber aturan** (`CLAUDE.md` dan `GEMINI.md` h
 | **Build C# Project** | `dotnet build otakLalat-npc.csproj -c Debug` |
 | **Jalankan Unit Tests** | `dotnet test tests/BrainTests -c Release` |
 | **Jalankan Game (GUI)** | `& "D:\Ruang game\Godot\Godot_v4.7.2-stable_mono_win64\Godot_v4.7.2-stable_mono_win64.exe" --path .` |
-| **Headless Benchmark** | `.venv/Scripts/python.exe tools/analysis/run_benchmarks.py --n 10 50 --seeds 1 2 --duration 60` |
+| **Headless Benchmark** | `.venv/Scripts/python.exe tools/analysis/run_benchmarks.py --n 10 50 --seeds 1 2 --duration 60` (tambah `--retina` untuk otak dengan penglihatan retinotopik) |
 | **Analisis & Plot Data** | `.venv/Scripts/python.exe tools/analysis/analyze_bench.py` |
 
 ---
