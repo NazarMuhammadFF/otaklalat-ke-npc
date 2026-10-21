@@ -8,8 +8,9 @@ public enum VisionMode { Scalar, Retinotopic }
 
 /// <summary>
 /// Retina 1D: tiap mata dibagi K sektor azimut (0 = depan ... K-1 = belakang). Murni matematika, tanpa Godot.
-/// Bearing: + = kiri, 0 = lurus depan. Mata kiri melihat [-FrontOverlap, pi], mata kanan cerminannya
-/// (tumpang tindih binokular di depan, sama dengan aturan skalar di NpcBase.Sense).
+/// Bearing: + = kiri, 0 = lurus depan. Mata kiri melihat [-FrontOverlap, EyeLimit(fov)], mata kanan cerminannya
+/// (tumpang tindih binokular di depan, sama dengan aturan skalar di NpcBase.Sense). FOV total 360 = tanpa titik buta;
+/// FOV < 360 menyisakan titik buta (360 - FOV) di belakang dan mempersempit sektor (jumlah sektor & peta neuron tetap).
 /// </summary>
 public static class Retina
 {
@@ -22,22 +23,29 @@ public static class Retina
     /// </summary>
     public const float Gain = 2f;
 
-    public static float SectorWidth(int k) => (MathF.PI + FrontOverlap) / k;
-    public static float SectorCenter(int sector, int k) => -FrontOverlap + (sector + 0.5f) * SectorWidth(k);
+    /// <summary>Total FOV gabungan kedua mata (rad) untuk spesies tanpa titik buta; nilai default semua parameter FOV.</summary>
+    public const float FullFov = 2f * MathF.PI;
+
+    /// <summary>Bearing terjauh (rad, dari depan) yang dilihat satu mata: setengah FOV total, paling jauh 180 derajat.</summary>
+    public static float EyeLimit(float fovRad = FullFov) => MathF.Min(MathF.PI, fovRad / 2f);
+
+    /// <summary>Lebar tiap sektor = rentang satu mata [-FrontOverlap, EyeLimit] dibagi jumlah sektor.</summary>
+    public static float SectorWidth(int k, float fovRad = FullFov) => (EyeLimit(fovRad) + FrontOverlap) / k;
+    public static float SectorCenter(int sector, int k, float fovRad = FullFov) => -FrontOverlap + (sector + 0.5f) * SectorWidth(k, fovRad);
 
     /// <summary>Tambahkan stimulus (arah <paramref name="bearing"/>, setengah lebar sudut <paramref name="halfWidth"/>, kekuatan s) ke sektor yang tertutup.</summary>
-    public static void Add(float bearing, float halfWidth, float s, float[] binsL, float[] binsR)
+    public static void Add(float bearing, float halfWidth, float s, float[] binsL, float[] binsR, float fovRad = FullFov)
     {
-        Fill(bearing, halfWidth, s, binsL);
-        Fill(-bearing, halfWidth, s, binsR);
+        Fill(bearing, halfWidth, s, binsL, fovRad);
+        Fill(-bearing, halfWidth, s, binsR, fovRad);
     }
 
-    static void Fill(float bearing, float halfWidth, float s, float[] bins)
+    static void Fill(float bearing, float halfWidth, float s, float[] bins, float fovRad)
     {
         int k = bins.Length;
-        float half = SectorWidth(k) / 2f;
+        float half = SectorWidth(k, fovRad) / 2f;
         for (int i = 0; i < k; i++)
-            if (MathF.Abs(bearing - SectorCenter(i, k)) <= halfWidth + half)
+            if (MathF.Abs(bearing - SectorCenter(i, k, fovRad)) <= halfWidth + half)
                 bins[i] = MathF.Max(bins[i], s);
     }
 

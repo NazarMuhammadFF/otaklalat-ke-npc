@@ -17,6 +17,8 @@ public partial class TraitProfile : Resource
     [Export(PropertyHint.Range, "0,2,0.05")] public float Curiosity = 1f;
     [Export(PropertyHint.Range, "0,2,0.05")] public float LearningRate = 1f;
     [Export(PropertyHint.Range, "0,2,0.05")] public float NeuralNoise = 1f;
+    /// <summary>FOV total gabungan kedua mata (derajat) untuk penglihatan retinotopik; titik buta = 360 - FovDeg. Bukan knob sifat.</summary>
+    [Export(PropertyHint.Range, "90,360,5")] public float FovDeg = 360f;
 
     public Traits ToTraits() => new()
     {

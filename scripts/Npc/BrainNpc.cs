@@ -22,6 +22,7 @@ public partial class BrainNpc : NpcBase
     public override void _Ready()
     {
         Traits = Profile?.ToTraits() ?? Traits.Neutral;
+        FovDeg = Profile?.FovDeg ?? 360f;
         Brain = new FlyBrain(BrainAssets.Connectome, BrainAssets.Params, Seed);
         // "masa kecil" yang sama untuk semua NPC otak: bau buah pernah dibarengi rasa manis (setara pengetahuan
         // bawaan FSM bahwa bau makanan itu baik). Setelah ini semua valensi berubah hanya lewat pengalaman di dunia.

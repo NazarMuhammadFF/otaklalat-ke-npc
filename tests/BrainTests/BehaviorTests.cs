@@ -130,6 +130,24 @@ public class BehaviorTests
         Assert.Equal(0.7f, l[0]); Assert.Equal(0.7f, r[0]);
     }
 
+    /// <summary>FOV per spesies: lebar sektor mengikuti FOV, 360 = perilaku lama, FOV 300 menyisakan titik buta 60 derajat di belakang.</summary>
+    [Fact]
+    public void Retina_Fov_SetsSectorWidthAndBlindSpot()
+    {
+        float deg(float r) => r * 180f / MathF.PI;
+        Assert.Equal((MathF.PI + Retina.FrontOverlap) / 8f, Retina.SectorWidth(8), 5);            // default = perilaku lama (24,65 derajat)
+        float fov300 = 300f * MathF.PI / 180f;
+        Assert.Equal(deg((150f * MathF.PI / 180f + Retina.FrontOverlap) / 8f), deg(Retina.SectorWidth(8, fov300)), 3);   // ~20,9 derajat
+        var l = new float[8]; var r = new float[8];
+        Retina.Add(3.0f, 0.05f, 1f, l, r, fov300);                      // hampir tepat di belakang -> titik buta
+        Assert.DoesNotContain(l, v => v > 0f); Assert.DoesNotContain(r, v => v > 0f);
+        Retina.Add(3.0f, 0.05f, 1f, l, r);                              // FOV 360 -> terlihat (sektor belakang mata kiri)
+        Assert.True(l[7] > 0f);
+        Array.Clear(l); Array.Clear(r);
+        Retina.Add(140f * MathF.PI / 180f, 0.05f, 1f, l, r, fov300);    // masih di dalam FOV rusa
+        Assert.Contains(l, v => v > 0f);
+    }
+
     /// <summary>Retinotopik vs skalar pada looming dari berbagai arah: ancaman di kiri dijauhi (belok kanan), dan sebaliknya.</summary>
     [Fact]
     public void Retina_Looming_EscapesAwayFromThreatSide()

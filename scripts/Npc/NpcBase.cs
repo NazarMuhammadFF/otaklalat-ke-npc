@@ -32,6 +32,8 @@ public abstract partial class NpcBase : CharacterBody3D
     public SensorFrame Frame;
     /// <summary>Jalur penglihatan looming ke otak (variabel eksperimen). Hanya NPC Otak yang memakainya; FSM tetap membaca LoomL/R.</summary>
     public VisionMode Vision = VisionMode.Scalar;
+    /// <summary>FOV total gabungan kedua mata (derajat); 360 = tanpa titik buta. Hanya dipakai jalur retina.</summary>
+    public float FovDeg = 360f;
     float[] loomBinsL, loomBinsR;
     public MotorCommand Command;
     public readonly NpcMetrics Metrics = new();
@@ -55,6 +57,10 @@ public abstract partial class NpcBase : CharacterBody3D
     static (string path, float scale) GetModelSpec(string typeName) => typeName.ToLowerInvariant() switch
     {
         "rusa" => ("res://assets/models/animals/Deer.gltf", 0.35f),
+        "sapi" => ("res://assets/models/animals/Cow.gltf", 0.26f),
+        "rubah" => ("res://assets/models/animals/Fox.gltf", 0.30f),
+        "keledai" => ("res://assets/models/animals/Donkey.gltf", 0.34f),
+        // Fallbacks kompatibilitas lama
         "babi" => ("res://assets/models/animals/Cow.gltf", 0.26f),
         "kucing" => ("res://assets/models/animals/Fox.gltf", 0.30f),
         "penduduk" => ("res://assets/models/animals/Donkey.gltf", 0.34f),
@@ -202,9 +208,9 @@ public abstract partial class NpcBase : CharacterBody3D
             float s = Mathf.Clamp((theta - prev) / dt / LoomRefRadPerS, 0f, 1f);
             if (s <= 0) continue;
             float b = Bearing(l.LoomPosition);
-            if (b > -0.3f) f.LoomL = Mathf.Max(f.LoomL, s);
-            if (b < 0.3f) f.LoomR = Mathf.Max(f.LoomR, s);
-            if (retina) Retina.Add(b, theta * 0.5f, s, loomBinsL, loomBinsR);
+            if (b > -Retina.FrontOverlap) f.LoomL = Mathf.Max(f.LoomL, s);
+            if (b < Retina.FrontOverlap) f.LoomR = Mathf.Max(f.LoomR, s);
+            if (retina) Retina.Add(b, theta * 0.5f, s, loomBinsL, loomBinsR, Mathf.DegToRad(FovDeg));
         }
         if (retina) { f.LoomBinsL = loomBinsL; f.LoomBinsR = loomBinsR; }
 

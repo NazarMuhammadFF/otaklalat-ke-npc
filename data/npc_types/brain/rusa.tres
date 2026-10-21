@@ -12,3 +12,4 @@ Pickiness = 1.2
 Curiosity = 0.8
 LearningRate = 1.6
 NeuralNoise = 1.0
+FovDeg = 300.0
