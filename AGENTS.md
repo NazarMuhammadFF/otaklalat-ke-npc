@@ -38,9 +38,9 @@ Dokumen ini adalah **satu-satunya sumber aturan** (`CLAUDE.md` dan `GEMINI.md` h
    | Tipe NPC (`data/npc_types/*/`) | Model | Catatan |
    |---|---|---|
    | `rusa` | `animals/Deer.gltf` | Pemilih, penakut |
-   | `babi` | `animals/Cow.gltf` | Placeholder (tidak ada model babi), herbivora rakus |
-   | `kucing` | `animals/Fox.gltf` | Placeholder (tidak ada model kucing), lincah |
-   | `penduduk` | `animals/Donkey.gltf` | Netral/rata-rata |
+   | `sapi` | `animals/Cow.gltf` | Herbivora rakus (nafsu makan tinggi) |
+   | `rubah` | `animals/Fox.gltf` | Lincah, penasaran/keingintahuan tinggi |
+   | `keledai` | `animals/Donkey.gltf` | Netral / rata-rata |
 
    Skala dan animasi (idle/walk/run) per model belum diverifikasi; cek di Godot sebelum dipakai. Model FBX (Snake, Frog, Rat, Wasp, Spider) belum dipetakan.
 
@@ -63,4 +63,14 @@ Dokumen ini adalah **satu-satunya sumber aturan** (`CLAUDE.md` dan `GEMINI.md` h
 Setiap agen yang menerima perintah dari pengguna wajib:
 1. **Sebelum bekerja**: Baca [`PROGRESS.md`](PROGRESS.md), [`PLAN.md`](PLAN.md), dan (untuk UI/benchmark) [`docs/rencana_pengujian_visual_dan_data.md`](docs/rencana_pengujian_visual_dan_data.md) untuk memahami status terakhir dan langkah kerja yang telah disetujui.
 2. **Saat bekerja**: Pastikan kode C# selalu lolos compile (`dotnet build`) dan unit tests tetap 100% pass (`dotnet test`). Kerjakan **satu tugas per sesi** dan jangan mengedit file yang sama bersamaan dengan agen lain (cek log terakhir di `PROGRESS.md` dulu).
-3. **Setelah selesai bekerja**: Wajib memperbarui bagian **Log Serah Terima** di [`PROGRESS.md`](PROGRESS.md) (apa yang diubah, file apa yang terpengaruh, dan apa tugas berikutnya) agar agen lain dapat melanjutkan tanpa jeda. Cantumkan perintah verifikasi yang benar-benar dijalankan beserta hasilnya, lalu `git commit` pekerjaan Anda.
+3. **Setelah selesai bekerja**: Wajib memperbarui bagian **Log Serah Terima** di [`PROGRESS.md`](PROGRESS.md) (apa yang diubah, file apa yang terpengaruh, dan apa tugas berikutnya) agar agen lain dapat melanjutkan tanpa jeda. Cantumkan perintah verifikasi yang benar-benar dijalankan beserta hasilnya, lalu `git commit` pekerjaan Anda sesuai [aturan Git](#5-aturan-git).
+
+---
+
+## 5. Aturan Git
+
+1. **Pesan commit**: **Bahasa Indonesia**, **satu baris singkat** (maks. ~70 karakter), tanpa isi panjang. Format: `<tipe>: <ringkasan>`, dengan tipe `fitur`, `perbaikan`, `refaktor`, `uji`, `dokumen`, atau `rapikan`. Contoh: `fitur: FOV retina per spesies`, `perbaikan: NPC tidak lagi menempel ke dinding`. Rincian pekerjaan ditulis di `PROGRESS.md`, bukan di pesan commit.
+2. **Satu tugas = satu commit** (atau beberapa commit kecil per tugas). Commit hanya file yang terkait tugas itu; jangan campur perubahan agen lain yang belum selesai (cek `git status` dulu).
+3. **Sebelum commit**: `dotnet build` 0 error dan `dotnet test` lolos. Jangan commit file sementara/uji (skrip `Tmp*`, `bench_out/`, tangkapan layar uji) maupun data mentah FlyWire (`tools/connectome/raw/` sudah di-ignore).
+4. **Push hanya atas permintaan pengguna.** Agen tidak menambah remote, tidak mengubah akses repo, dan tidak memakai akun sendiri; push memakai identitas Git pengguna di mesin ini. Jangan `--force`, jangan `--no-verify`, dan jangan mengubah (`--amend`/rebase) commit yang sudah di-push.
+5. Cabang kerja saat ini adalah `master`. Buat cabang baru hanya bila diminta pengguna.
